@@ -1,0 +1,1125 @@
+/* ========================================================
+   Quantex Assessment & Recruitment Portal - Custom Stylesheet
+   ======================================================== */
+
+:root {
+  --primary: #2563eb;
+  --primary-hover: #1d4ed8;
+  --primary-light: #eff6ff;
+  --dark-bg: #0f172a;
+  --dark-card: #1e293b;
+  --dark-border: #334155;
+  --text-main: #0f172a;
+  --text-muted: #64748b;
+  --success: #10b981;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  color: #1e293b;
+  background-color: #f8fafc;
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Logo styling */
+img[src*="aarks_logo"] {
+  height: 38px !important;
+  max-height: 40px !important;
+  width: auto !important;
+  object-fit: contain !important;
+  display: inline-block !important;
+}
+
+img[src*="cognito_logo"] {
+  height: 40px !important;
+  max-height: 42px !important;
+  width: auto !important;
+  max-width: 180px !important;
+  object-fit: contain !important;
+  display: inline-block !important;
+}
+
+.brand-logo-img, img.brand-logo-img {
+  height: 40px !important;
+  max-height: 42px !important;
+  width: auto !important;
+  max-width: 180px !important;
+  object-fit: contain !important;
+  display: inline-block !important;
+  border-radius: 6px;
+}
+
+.brand-logo-primary, img.brand-logo-primary {
+  height: 40px !important;
+  max-height: 42px !important;
+  width: auto !important;
+  max-width: 180px !important;
+  object-fit: contain !important;
+  display: inline-block !important;
+  border-radius: 6px;
+}
+
+.brand-logo-secondary, img.brand-logo-secondary {
+  display: none !important;
+}
+
+.brand-partner-divider {
+  display: none !important;
+}
+
+/* Code editor styling */
+.editor-container {
+  display: flex;
+  background-color: #1e1e1e;
+  border-radius: 8px;
+  overflow: hidden;
+  font-family: "Fira Code", Consolas, Monaco, "Courier New", Courier, monospace;
+  font-size: 14px;
+  line-height: 1.5;
+  border: 1px solid #334155;
+  min-height: 380px;
+}
+
+.line-numbers {
+  padding: 12px 10px;
+  color: #64748b;
+  background-color: #18181b;
+  user-select: none;
+  text-align: right;
+  border-right: 1px solid #27272a;
+  font-size: 13px;
+}
+
+.code-textarea {
+  flex: 1;
+  background-color: #1e1e1e;
+  color: #f8fafc;
+  border: none;
+  padding: 12px 16px;
+  resize: vertical;
+  outline: none;
+  white-space: pre;
+  tab-size: 2;
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.5;
+  min-height: 380px;
+}
+
+/* Stepper styles */
+.stepper-step {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.step-circle {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.step-circle.active {
+  background-color: #2563eb;
+  color: white;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.2);
+}
+
+.step-circle.completed {
+  background-color: #10b981;
+  color: white;
+}
+
+.step-circle.upcoming {
+  background-color: #e2e8f0;
+  color: #64748b;
+}
+
+/* Live proctor webcam box (Moved to top-right to NEVER cover bottom submit buttons, Draggable) */
+.proctor-camera-card {
+  position: fixed;
+  top: 76px;
+  right: 24px;
+  width: 176px;
+  background: #0f172a;
+  border: 2px solid #334155;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.35);
+  z-index: 50;
+  transition: box-shadow 0.2s ease;
+  user-select: none;
+}
+
+.proctor-camera-card:hover {
+  box-shadow: 0 14px 28px -4px rgba(0, 0, 0, 0.45);
+}
+
+.camera-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  background: rgba(15, 23, 42, 0.95);
+  border-bottom: 1px solid #1e293b;
+  cursor: grab;
+}
+
+.camera-card-header:active {
+  cursor: grabbing;
+}
+
+.camera-recording-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  color: #f1f5f9;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.proctor-camera-video {
+  width: 100%;
+  height: 116px;
+  object-fit: cover;
+  background: #020617;
+  display: block;
+}
+
+.rec-pulse-dot {
+  width: 8px;
+  height: 8px;
+  background-color: #ef4444;
+  border-radius: 50%;
+  animation: pulse-red 1.5s infinite;
+}
+
+@keyframes pulse-red {
+  0% { transform: scale(0.95); opacity: 1; }
+  50% { transform: scale(1.25); opacity: 0.5; }
+  100% { transform: scale(0.95); opacity: 1; }
+}
+
+/* Question Palette Buttons */
+.palette-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+  border: 1px solid #cbd5e1;
+  background-color: #ffffff;
+  color: #475569;
+  cursor: pointer;
+  position: relative;
+}
+
+.palette-btn:hover {
+  border-color: #2563eb;
+  color: #2563eb;
+  transform: translateY(-1px);
+}
+
+.palette-btn.current {
+  border-color: #2563eb !important;
+  box-shadow: 0 0 0 2.5px #2563eb !important;
+  font-weight: 800;
+}
+
+/* 1. Answered */
+.palette-btn.answered {
+  background-color: #10b981 !important;
+  border-color: #059669 !important;
+  color: #ffffff !important;
+}
+
+/* 2. Visited but Unanswered */
+.palette-btn.unanswered {
+  background-color: #f97316 !important;
+  border-color: #ea580c !important;
+  color: #ffffff !important;
+}
+
+/* 3. Marked for Later Visit */
+.palette-btn.marked {
+  background-color: #8b5cf6 !important;
+  border-color: #7c3aed !important;
+  color: #ffffff !important;
+}
+
+/* 4. Answered and Marked for Later Visit */
+.palette-btn.answered-marked {
+  background-color: #8b5cf6 !important;
+  border-color: #7c3aed !important;
+  color: #ffffff !important;
+}
+.palette-btn.answered-marked::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background-color: #10b981;
+  border: 1.5px solid white;
+}
+
+/* 5. Not Visited */
+.palette-btn.not-visited {
+  background-color: #f8fafc;
+  border-color: #e2e8f0;
+  color: #64748b;
+}
+
+/* ========================================================
+   MCQ Option Cards - Professional Vertical Alignment (Sec 1 & Sec 2)
+   ======================================================== */
+.mcq-option-label {
+  display: flex !important;
+  align-items: center;
+  gap: 14px;
+  width: 100% !important;
+  padding: 13px 18px !important;
+  background-color: #ffffff !important;
+  border: 1.5px solid #e2e8f0 !important;
+  border-radius: 12px !important;
+  cursor: pointer !important;
+  transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  user-select: none !important;
+  margin-bottom: 10px !important;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.03);
+}
+
+.mcq-option-label:hover {
+  border-color: #6366f1 !important;
+  background-color: #f8fafc !important;
+  transform: translateX(3px);
+  box-shadow: 0 4px 6px -1px rgba(99, 102, 241, 0.08);
+}
+
+.mcq-option-label.selected {
+  border-color: #4f46e5 !important;
+  background-color: #eef2ff !important;
+  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2), 0 2px 4px 0 rgba(0, 0, 0, 0.05) !important;
+}
+
+.option-badge {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 13px;
+  flex-shrink: 0;
+  background-color: #f1f5f9;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+  transition: all 0.18s ease;
+}
+
+.mcq-option-label:hover .option-badge {
+  border-color: #818cf8;
+  color: #4f46e5;
+  background-color: #e0e7ff;
+}
+
+.mcq-option-label.selected .option-badge {
+  background-color: #4f46e5 !important;
+  color: #ffffff !important;
+  border-color: #4f46e5 !important;
+  box-shadow: 0 2px 4px rgba(79, 70, 229, 0.3);
+}
+
+.mcq-option-text {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1e293b;
+  line-height: 1.45;
+  flex: 1;
+}
+
+.mcq-option-label.selected .mcq-option-text {
+  color: #1e1b4b;
+  font-weight: 700;
+}
+
+/* Badges */
+.badge-assigned {
+  background-color: #dbeafe;
+  color: #1e40af;
+  border: 1px solid #bfdbfe;
+}
+.badge-completed {
+  background-color: #d1fae5;
+  color: #065f46;
+  border: 1px solid #a7f3d0;
+}
+.badge-shortlisted {
+  background-color: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fde68a;
+}
+.badge-rejected {
+  background-color: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
+.badge-notassigned {
+  background-color: #f1f5f9;
+  color: #475569;
+  border: 1px solid #e2e8f0;
+}
+
+/* Modal backdrop */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  padding: 16px;
+}
+
+/* Print scorecard styles */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #printable-report, #printable-report * {
+    visibility: visible;
+  }
+  #printable-report {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    background: white;
+    padding: 20px;
+  }
+  .no-print {
+    display: none !important;
+  }
+}
+
+/* ========================================================
+   Anti-Cheating, Anti-Copy & Anti-Capture Proctoring Shield
+   ======================================================== */
+
+/* Blur screen immediately on window blur / defocus / application switch */
+body.exam-blur-shield #exam-interface-view {
+  filter: blur(40px) grayscale(100%);
+  user-select: none !important;
+  pointer-events: none !important;
+  transition: filter 0.1s ease;
+}
+
+/* Block user text selection across all exam questions & code problems */
+#exam-interface-view,
+.exam-protected-content,
+.question-prompt,
+.mcq-option-label,
+.scenario-text {
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  -moz-user-select: none !important;
+  -ms-user-select: none !important;
+}
+
+/* Proctoring warning modal pulse */
+.proctor-violation-shake {
+  animation: violation-shake 0.4s ease-in-out;
+}
+
+@keyframes violation-shake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-8px); }
+  40%, 80% { transform: translateX(8px); }
+}
+
+/* ========================================================
+   Glassmorphism Modal & Celebratory Animations
+   ======================================================== */
+.glass-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.7);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.glass-modal-card {
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.05);
+  border-radius: 24px;
+  animation: scaleIn 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow: hidden;
+  max-width: 520px;
+  width: 100%;
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.92) translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Animated Success Checkmark */
+.success-checkmark-circle {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px auto;
+  box-shadow: 0 10px 25px -5px rgba(16, 185, 129, 0.4);
+  animation: checkmarkPop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes checkmarkPop {
+  0% { transform: scale(0) rotate(-45deg); opacity: 0; }
+  70% { transform: scale(1.15) rotate(10deg); }
+  100% { transform: scale(1) rotate(0); opacity: 1; }
+}
+
+/* Dynamic Security Watermark Overlay */
+.exam-watermark-overlay {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 35;
+  overflow: hidden;
+  opacity: 0.12;
+  user-select: none;
+  transition: transform 3s ease-in-out;
+}
+
+.watermark-pattern {
+  display: flex;
+  flex-direction: column;
+  gap: 120px;
+  font-family: monospace;
+  font-size: 16px;
+  font-weight: 800;
+  color: #1e293b;
+  transform: rotate(-25deg);
+  white-space: nowrap;
+  letter-spacing: 4px;
+}
+
+/* Searchable College Dropdown */
+.searchable-select-container {
+  position: relative;
+}
+
+.searchable-options-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: white;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+  max-height: 240px;
+  overflow-y: auto;
+  z-index: 50;
+  margin-top: 4px;
+}
+
+.searchable-option-item {
+  padding: 8px 12px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.searchable-option-item:hover, .searchable-option-item.selected {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+/* Neutral elegant form accents */
+.form-neutral-label {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #334155;
+}
+
+.form-neutral-helper {
+  font-size: 11px;
+  color: #64748b;
+}
+
+
+/* ========================================================
+   MASTER PROMPT V2: ENTERPRISE ADMIN, PIPELINE & OFFLINE STYLES
+   ======================================================== */
+
+/* Dedicated Full-Screen Enterprise Admin Portal Layout */
+body.admin-mode > header.no-print,
+body:has(#admin-portal-view:not(.hidden)) > header.no-print {
+  display: none !important;
+}
+
+/* ==============================================================================
+   COGNITO TECH HUB — WHITE & SKY-BLUE ENTERPRISE THEME (PRISTINE LIGHT)
+   Matches the pristine aesthetic of the Login Card and Brand Tech Hub Identity
+   Completely replaces all dull grey container boxes with clean pure white cards,
+   and eliminates washed-out grey-on-grey text overlapping for ultra-high contrast.
+   ============================================================================== */
+
+#admin-portal-view {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 50 !important;
+  background-color: #f8fafc !important;
+  color: #0f172a !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+  height: 100vh !important;
+  width: 100vw !important;
+}
+
+#admin-portal-view.hidden {
+  display: none !important;
+}
+
+/* Admin Top Bar */
+#admin-portal-view > header {
+  background-color: #ffffff !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04) !important;
+  color: #0f172a !important;
+}
+
+/* Admin Enterprise Sidebar */
+.admin-sidebar {
+  width: 270px !important;
+  min-width: 270px !important;
+  max-width: 270px !important;
+  background: #ffffff !important;
+  color: #1e293b !important;
+  border-right: 1px solid #e2e8f0 !important;
+  flex-shrink: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  height: 100% !important;
+  overflow-y: auto !important;
+  transition: all 0.2s ease-in-out !important;
+  box-shadow: 1px 0 4px 0 rgba(0, 0, 0, 0.03) !important;
+}
+
+.admin-sidebar .sticky {
+  background-color: #ffffff !important;
+  border-bottom: 1px solid #f1f5f9 !important;
+}
+
+.admin-sidebar input#admin-module-search {
+  background-color: #f8fafc !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #0f172a !important;
+  border-radius: 10px !important;
+}
+.admin-sidebar input#admin-module-search:focus {
+  background-color: #ffffff !important;
+  border-color: #0284c7 !important;
+  box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.12) !important;
+}
+
+/* Custom scrollbar for light enterprise viewports */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: #f8fafc;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+.admin-nav-group-title {
+  font-size: 10px !important;
+  font-weight: 800 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.08em !important;
+  color: #475569 !important;
+  padding: 12px 14px 4px 14px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+}
+
+.admin-nav-link {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 10px !important;
+  padding: 8px 12px !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  color: #334155 !important;
+  border-radius: 10px !important;
+  margin: 2px 8px !important;
+  transition: all 0.15s ease !important;
+  cursor: pointer !important;
+  text-decoration: none !important;
+  user-select: none !important;
+}
+
+/* Prevent inner elements from stealing click events */
+.admin-nav-link * {
+  pointer-events: none !important;
+}
+
+.admin-nav-link:hover {
+  background: #f0f9ff !important;
+  color: #0284c7 !important;
+}
+
+.admin-nav-link:hover i {
+  color: #0284c7 !important;
+}
+
+.admin-nav-link.active {
+  background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%) !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  box-shadow: 0 4px 14px -2px rgba(2, 132, 199, 0.45) !important;
+}
+
+.admin-nav-link.active i,
+.admin-nav-link.active span {
+  color: #ffffff !important;
+}
+
+.admin-nav-link.active span:last-child {
+  background: rgba(255, 255, 255, 0.25) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.35) !important;
+}
+
+/* Sidebar Badges - Crisp Sky-Blue Pills */
+.admin-nav-link span:last-child {
+  background: #f0f9ff !important;
+  color: #0284c7 !important;
+  border: 1px solid #bae6fd !important;
+  font-weight: 700 !important;
+  border-radius: 9999px !important;
+  padding: 2px 7px !important;
+  font-size: 9px !important;
+}
+
+.admin-nav-link i {
+  width: 16px;
+  text-align: center;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+/* Main Viewport: Clean White & Soft Slate */
+#admin-module-viewport {
+  background-color: #f8fafc !important;
+  color: #0f172a !important;
+}
+
+/* ==============================================================================
+   COMPLETE ERADICATION OF GREY CONTAINERS: Pure White Cards Across All Modules
+   ============================================================================== */
+#admin-module-viewport .bg-slate-800,
+#admin-module-viewport .bg-slate-800\/80,
+#admin-module-viewport .bg-slate-800\/90,
+#admin-module-viewport .bg-slate-800\/70,
+#admin-module-viewport .bg-slate-900,
+#admin-module-viewport .bg-slate-900\/80,
+#admin-module-viewport .bg-slate-900\/90,
+#admin-module-viewport .bg-slate-950,
+#admin-module-viewport .bg-slate-700 {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  color: #0f172a !important;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05) !important;
+  border-radius: 16px !important;
+}
+
+/* Inner sub-containers, chips, and list items */
+#admin-module-viewport .bg-slate-900\/60,
+#admin-module-viewport .bg-slate-950\/60,
+#admin-module-viewport .bg-slate-900\/40 {
+  background-color: #f8fafc !important;
+  border: 1px solid #e2e8f0 !important;
+  color: #1e293b !important;
+  border-radius: 12px !important;
+}
+
+/* ==============================================================================
+   COMPLETE ERADICATION OF WASHED-OUT GREY-ON-GREY TEXT: Ultra-High Contrast
+   ============================================================================== */
+#admin-module-viewport h1,
+#admin-module-viewport h2,
+#admin-module-viewport h3,
+#admin-module-viewport h4,
+#admin-module-viewport .text-white {
+  color: #0f172a !important;
+}
+
+#admin-module-viewport .text-slate-200,
+#admin-module-viewport .text-slate-300 {
+  color: #1e293b !important;
+}
+
+/* Force all labels & metadata to high-contrast slate-700 */
+#admin-module-viewport label,
+#admin-module-viewport .text-slate-400 {
+  color: #475569 !important;
+  font-weight: 600 !important;
+}
+
+#admin-module-viewport .text-slate-500 {
+  color: #475569 !important;
+}
+
+#admin-module-viewport .border-slate-700,
+#admin-module-viewport .border-slate-700\/80,
+#admin-module-viewport .border-slate-700\/60,
+#admin-module-viewport .border-slate-800,
+#admin-module-viewport .border-slate-800\/80 {
+  border-color: #e2e8f0 !important;
+}
+
+/* Tables in Light & Sky Theme */
+#admin-module-viewport table {
+  background-color: #ffffff !important;
+  border-collapse: separate !important;
+  border-spacing: 0 !important;
+}
+
+#admin-module-viewport table thead tr {
+  background-color: #f8fafc !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+  color: #334155 !important;
+  font-weight: 700 !important;
+}
+
+#admin-module-viewport table thead th {
+  color: #334155 !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+}
+
+#admin-module-viewport table tbody tr {
+  background-color: #ffffff !important;
+  border-bottom: 1px solid #f1f5f9 !important;
+  color: #1e293b !important;
+}
+
+#admin-module-viewport table tbody tr:hover {
+  background-color: #f0f9ff !important;
+}
+
+#admin-module-viewport table tbody td {
+  border-bottom: 1px solid #f1f5f9 !important;
+  color: #1e293b !important;
+}
+
+/* Form Controls */
+#admin-module-viewport input,
+#admin-module-viewport select,
+#admin-module-viewport textarea {
+  background-color: #f8fafc !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #0f172a !important;
+  border-radius: 10px !important;
+}
+
+#admin-module-viewport input:focus,
+#admin-module-viewport select:focus,
+#admin-module-viewport textarea:focus {
+  background-color: #ffffff !important;
+  border-color: #0284c7 !important;
+  box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.12) !important;
+}
+
+/* Primary Action Buttons */
+#admin-module-viewport button.bg-indigo-600 {
+  background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%) !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 8px -1px rgba(2, 132, 199, 0.35) !important;
+}
+#admin-module-viewport button.bg-indigo-600:hover {
+  background: linear-gradient(135deg, #0369a1 0%, #1d4ed8 100%) !important;
+}
+
+/* Secondary Action Buttons */
+#admin-module-viewport button.bg-slate-800 {
+  background: #ffffff !important;
+  color: #334155 !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+}
+#admin-module-viewport button.bg-slate-800:hover {
+  background: #f8fafc !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+}
+
+/* ==============================================================================
+   UNIVERSAL ENTERPRISE MODALS — PRISTINE WHITE CARD THEME
+   ============================================================================== */
+#admin-dynamic-modal {
+  background-color: rgba(15, 23, 42, 0.5) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+}
+
+#admin-dynamic-modal-card {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 20px !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.2) !important;
+  overflow: hidden !important;
+}
+
+#admin-dynamic-modal-card .bg-slate-950,
+#admin-dynamic-modal-card .bg-slate-900,
+#admin-dynamic-modal-card .bg-slate-800 {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+
+#admin-dynamic-modal-card .bg-slate-950\/80 {
+  background-color: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+}
+
+#admin-dynamic-modal-card h3,
+#admin-dynamic-modal-card .text-white {
+  color: #0f172a !important;
+}
+
+#admin-dynamic-modal-card label {
+  color: #334155 !important;
+  font-weight: 700 !important;
+}
+
+#admin-dynamic-modal-card .text-slate-400 {
+  color: #64748b !important;
+}
+
+#admin-dynamic-modal-card .text-slate-200 {
+  color: #1e293b !important;
+}
+
+#admin-dynamic-modal-card input,
+#admin-dynamic-modal-card select,
+#admin-dynamic-modal-card textarea {
+  background-color: #f8fafc !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #0f172a !important;
+  border-radius: 10px !important;
+}
+
+#admin-dynamic-modal-card input:focus,
+#admin-dynamic-modal-card select:focus,
+#admin-dynamic-modal-card textarea:focus {
+  background-color: #ffffff !important;
+  border-color: #0284c7 !important;
+  box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.12) !important;
+}
+
+/* Candidate Detail Modal - Crisp White Theme */
+#candidate-detail-modal .bg-slate-900 {
+  background-color: #ffffff !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+  color: #0f172a !important;
+}
+#candidate-detail-modal #modal-cand-name {
+  color: #0f172a !important;
+}
+#candidate-detail-modal .bg-slate-50 {
+  background-color: #f8fafc !important;
+  border: 1px solid #e2e8f0 !important;
+}
+#candidate-detail-modal .text-slate-400 {
+  color: #475569 !important;
+  font-weight: 700 !important;
+}
+
+/* Offline Sync Status Badge */
+.offline-sync-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.offline-sync-badge.online {
+  background-color: #ecfdf5;
+  color: #059669;
+  border: 1px solid #a7f3d0;
+}
+
+.offline-sync-badge.offline {
+  background-color: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+  animation: pulse-border 1.5s infinite;
+}
+
+@keyframes pulse-border {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+/* 10-Stage Result Pipeline Stepper */
+.pipeline-step {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  transition: all 0.15s ease;
+}
+
+.pipeline-step.completed {
+  border-color: #10b981;
+  background: #f0fdf4;
+}
+
+.pipeline-step.active {
+  border-color: #3b82f6;
+  background: #eff6ff;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+.pipeline-step.pending {
+  border-color: #e2e8f0;
+  background: #f8fafc;
+  opacity: 0.7;
+}
+
+.pipeline-step-number {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.pipeline-step.completed .pipeline-step-number {
+  background: #10b981;
+  color: #ffffff;
+}
+
+.pipeline-step.active .pipeline-step-number {
+  background: #3b82f6;
+  color: #ffffff;
+}
+
+.pipeline-step.pending .pipeline-step-number {
+  background: #e2e8f0;
+  color: #64748b;
+}
+
+/* Modal backdrop blur & animations */
+.modal-overlay {
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.modal-card {
+  animation: modalScaleUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes modalScaleUp {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}

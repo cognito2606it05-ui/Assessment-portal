@@ -1,0 +1,11 @@
+# Environment variables & secrets
+.env
+public_html/.env
+*.env.local
+
+# Backups and logs
+*.bak
+*.log
+
+# Build artifacts
+public_html.zip
