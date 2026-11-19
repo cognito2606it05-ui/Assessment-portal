@@ -3714,43 +3714,57 @@ Candidate Name</textarea>
 
     // App Initialization
     document.addEventListener("DOMContentLoaded", () => {
-      // Clear credentials immediately on DOM ready
+      // User explicitly required: Profile should logout after refresh
+      try {
+        localStorage.removeItem("COGNITO_CONTEST_USER_V3");
+        localStorage.removeItem("COGNITO_SAVED_USER");
+        localStorage.removeItem("COGNITO_REMEMBER_ME");
+        sessionStorage.clear();
+      } catch (e) {}
+
+      if (window.appState) {
+        window.appState.currentUser = null;
+        if (typeof window.appState.setCurrentUser === "function") {
+          window.appState.setCurrentUser(null);
+        }
+      }
+
       window.clearLoginCredentials();
       setTimeout(window.clearLoginCredentials, 50);
       setTimeout(window.clearLoginCredentials, 250);
       setTimeout(window.clearLoginCredentials, 800);
 
-      // Check if user session already active
-      const user = window.appState.currentUser;
       const guestNav = document.getElementById("header-guest-nav");
       const authNav = document.getElementById("header-auth-nav");
       const userNameEl = document.getElementById("header-user-name");
       const userRoleEl = document.getElementById("header-user-role");
       const userAvatarEl = document.getElementById("header-user-avatar");
 
-      if (user) {
-        if (guestNav) guestNav.classList.add("hidden");
-        if (authNav) authNav.classList.remove("hidden");
-        if (userNameEl) userNameEl.textContent = user.name;
-        if (userRoleEl) userRoleEl.textContent = user.role;
-        if (userAvatarEl) userAvatarEl.textContent = (user.name || "U")[0].toUpperCase();
+      if (guestNav) guestNav.classList.remove("hidden");
+      if (authNav) authNav.classList.add("hidden");
+      if (userNameEl) userNameEl.textContent = "";
+      if (userRoleEl) userRoleEl.textContent = "";
+      if (userAvatarEl) userAvatarEl.textContent = "U";
 
-        if (user.role === "admin") {
-          window.appState.routeToView("admin-portal-view");
-          window.adminManager.renderDashboard();
-        } else {
-          window.appState.renderStudentDashboard(user.studentId);
-          window.appState.routeToView("student-dashboard-view");
-        }
-      } else {
-        if (guestNav) guestNav.classList.remove("hidden");
-        if (authNav) authNav.classList.add("hidden");
+      if (window.appState && typeof window.appState.routeToView === "function") {
         window.appState.routeToView("login-view");
-        window.clearLoginCredentials();
       }
     });
 
     window.addEventListener("pageshow", () => {
+      try {
+        localStorage.removeItem("COGNITO_CONTEST_USER_V3");
+        localStorage.removeItem("COGNITO_SAVED_USER");
+        localStorage.removeItem("COGNITO_REMEMBER_ME");
+        sessionStorage.clear();
+      } catch (e) {}
+
+      if (window.appState) {
+        window.appState.currentUser = null;
+        if (typeof window.appState.updateHeaderAuthUI === "function") {
+          window.appState.updateHeaderAuthUI();
+        }
+      }
       window.clearLoginCredentials();
       setTimeout(window.clearLoginCredentials, 150);
     });

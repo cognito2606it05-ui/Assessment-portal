@@ -339,9 +339,13 @@ class AppState {
       const keys = [
         "QUANTEX_PORTAL_PROD_V1", "QUANTEX_PORTAL_PROD_V2", "QUANTEX_PORTAL_PROD_V3",
         "QUANTEX_PORTAL_DB_V2", "QUANTEX_PORTAL_DB_V1", "COGNITO_CONTEST_DATA_V1",
-        "COGNITO_CONTEST_DATA_V2", "COGNITO_CONTEST_USER_V1", "COGNITO_CONTEST_USER_V2"
+        "COGNITO_CONTEST_DATA_V2", "COGNITO_CONTEST_USER_V1", "COGNITO_CONTEST_USER_V2",
+        "COGNITO_CONTEST_USER_V3", "COGNITO_SAVED_USER", "COGNITO_REMEMBER_ME"
       ];
-      keys.forEach(k => localStorage.removeItem(k));
+      keys.forEach(k => {
+        localStorage.removeItem(k);
+        sessionStorage.removeItem(k);
+      });
     } catch (e) {}
   }
 
@@ -474,20 +478,25 @@ class AppState {
   }
 
   loadCurrentUser() {
+    // User explicitly requested: After refresh also, the profile should logout
     try {
-      const saved = localStorage.getItem(this.currentUserKey);
-      return saved ? JSON.parse(saved) : null;
-    } catch (e) {
-      return null;
-    }
+      localStorage.removeItem(this.currentUserKey);
+      sessionStorage.removeItem(this.currentUserKey);
+    } catch (_) {}
+    return null;
   }
 
   setCurrentUser(user) {
     this.currentUser = user;
     if (user) {
-      localStorage.setItem(this.currentUserKey, JSON.stringify(user));
+      try {
+        sessionStorage.setItem(this.currentUserKey, JSON.stringify(user));
+      } catch (_) {}
     } else {
-      localStorage.removeItem(this.currentUserKey);
+      try {
+        sessionStorage.removeItem(this.currentUserKey);
+        localStorage.removeItem(this.currentUserKey);
+      } catch (_) {}
     }
     this.updateHeaderAuthUI();
   }
@@ -497,15 +506,20 @@ class AppState {
     const authNav = document.getElementById("header-auth-nav");
     const userName = document.getElementById("header-user-name");
     const userRole = document.getElementById("header-user-role");
+    const userAvatar = document.getElementById("header-user-avatar");
 
     if (this.currentUser) {
       if (guestNav) guestNav.classList.add("hidden");
       if (authNav) authNav.classList.remove("hidden");
       if (userName) userName.textContent = this.currentUser.name || "User";
       if (userRole) userRole.textContent = this.currentUser.role === "admin" ? "Recruiter Admin" : "Candidate";
+      if (userAvatar) userAvatar.textContent = (this.currentUser.name || "U")[0].toUpperCase();
     } else {
       if (guestNav) guestNav.classList.remove("hidden");
       if (authNav) authNav.classList.add("hidden");
+      if (userName) userName.textContent = "";
+      if (userRole) userRole.textContent = "";
+      if (userAvatar) userAvatar.textContent = "U";
     }
   }
 
