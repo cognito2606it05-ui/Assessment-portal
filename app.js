@@ -1139,7 +1139,6 @@ class AppState {
       toggleOtherCollegeInput(collegeSelect.value);
     }
   }
-  }
 
   // --------------------------------------------------------------------------
   // REGISTRATION & GLASSMORPHISM POPUP
