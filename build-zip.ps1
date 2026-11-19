@@ -10,7 +10,7 @@ if (Test-Path $zipPath) {
 
 $zip = [System.IO.Compression.ZipFile]::Open($zipPath, [System.IO.Compression.ZipArchiveMode]::Create)
 
-Get-ChildItem -Path $sourceDir -Recurse -File | ForEach-Object {
+Get-ChildItem -Path $sourceDir -Recurse -File | Where-Object { $_.Name -ne ".env" } | ForEach-Object {
     $fullPath = $_.FullName
     $relPath = $fullPath.Substring($sourceDir.Length + 1).Replace('\', '/')
     [System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile($zip, $fullPath, $relPath, [System.IO.Compression.CompressionLevel]::Optimal) | Out-Null

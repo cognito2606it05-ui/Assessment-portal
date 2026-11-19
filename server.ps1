@@ -22,6 +22,47 @@ $port = if ($envConfig["PORT"]) { [int]$envConfig["PORT"] } else { 5500 }
 $resendApiKey = if ($envConfig["RESEND_API_KEY"]) { $envConfig["RESEND_API_KEY"] } elseif ($env:RESEND_API_KEY) { $env:RESEND_API_KEY } else { "" }
 $senderEmail = if ($envConfig["RESEND_SENDER_EMAIL"]) { $envConfig["RESEND_SENDER_EMAIL"] } else { "noreply@cognitoinsights.tech" }
 $senderName = if ($envConfig["RESEND_SENDER_NAME"]) { $envConfig["RESEND_SENDER_NAME"] } else { "Cognito Assessment Portal" }
+$useHostingerDb = if ($envConfig["USE_HOSTINGER_DB"] -eq "false") { $false } else { $true }
+$hostingerBaseUrl = if ($envConfig["HOSTINGER_BASE_URL"]) { $envConfig["HOSTINGER_BASE_URL"] } else { "https://contest.cognitoinsights.tech" }
+
+function Forward-ToHostinger {
+    param($req, $resp)
+    try {
+        $targetUrl = "$hostingerBaseUrl$($req.Url.PathAndQuery)"
+        $body = $null
+        if ($req.HasEntityBody) {
+            $reader = New-Object System.IO.StreamReader($req.InputStream, $req.ContentEncoding)
+            $body = $reader.ReadToEnd()
+        }
+
+        $headers = @{}
+        if ($req.ContentType) { $headers["Content-Type"] = $req.ContentType }
+        if ($req.Headers["Authorization"]) { $headers["Authorization"] = $req.Headers["Authorization"] }
+
+        $webParams = @{
+            Uri = $targetUrl
+            Method = $req.HttpMethod
+            Headers = $headers
+            TimeoutSec = 10
+            UseBasicParsing = $true
+        }
+        if ($body) { $webParams["Body"] = $body }
+
+        $webRes = Invoke-WebRequest @webParams
+        $content = $webRes.Content
+        $bytes = [System.Text.Encoding]::UTF8.GetBytes($content)
+
+        $resp.StatusCode = [int]$webRes.StatusCode
+        $resp.ContentType = if ($webRes.Headers["Content-Type"]) { $webRes.Headers["Content-Type"] } else { "application/json; charset=utf-8" }
+        $resp.ContentLength64 = $bytes.Length
+        $resp.OutputStream.Write($bytes, 0, $bytes.Length)
+        $resp.Close()
+        return $true
+    } catch {
+        Write-Output "[Hostinger Proxy Notice] Fallback to local handler ($($_.Exception.Message))"
+        return $false
+    }
+}
 
 function Send-ResendOtp {
     param(
@@ -122,6 +163,15 @@ try {
             $response.StatusCode = 200
             $response.Close()
             continue
+        }
+
+        # API Proxy: Forward API calls directly to Hostinger MySQL backend if enabled
+        $isApiEndpoint = ($request.Url.LocalPath.EndsWith(".php") -or $request.Url.LocalPath.StartsWith("/api/")) -and ($request.Url.LocalPath -ne "/send-otp.php" -and $request.Url.LocalPath -ne "/api/send-otp")
+        if ($useHostingerDb -and $isApiEndpoint) {
+            $proxied = Forward-ToHostinger -req $request -resp $response
+            if ($proxied) {
+                continue
+            }
         }
 
         # API Route: POST /api/send-otp or /send-otp.php

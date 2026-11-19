@@ -1,11 +1,36 @@
-﻿-- ==============================================================================
+-- ==============================================================================
 -- Cognito Assessment & Online Examination Platform - Database Schema
 -- Database: u297467125_contest
 -- Domain: contest.cognitoinsights.tech
 -- Hostinger MySQL / MariaDB Compatible
 -- ==============================================================================
 
-SET FOREIGN_KEY_CHECKS = 1;
+SET FOREIGN_KEY_CHECKS = 0;
+SET NAMES utf8mb4;
+
+-- ==============================================================================
+-- Idempotent Table Column Upgrades for Existing Hostinger Databases
+-- ==============================================================================
+ALTER TABLE `students` 
+  ADD COLUMN IF NOT EXISTS `is_blocked` TINYINT(1) DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS `is_active` TINYINT(1) DEFAULT 1,
+  ADD COLUMN IF NOT EXISTS `college_district` VARCHAR(100) DEFAULT 'Andhra Pradesh',
+  ADD COLUMN IF NOT EXISTS `college_type` VARCHAR(100) DEFAULT 'Autonomous Engineering',
+  ADD COLUMN IF NOT EXISTS `current_semester` VARCHAR(20) DEFAULT 'Final Year',
+  ADD COLUMN IF NOT EXISTS `domain_interest` VARCHAR(100) DEFAULT 'Full Stack Engineering';
+
+ALTER TABLE `assessments`
+  ADD COLUMN IF NOT EXISTS `coding_q1_score` DECIMAL(5,2) DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS `coding_q2_score` DECIMAL(5,2) DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS `coding_q1_lang` VARCHAR(20) DEFAULT 'python',
+  ADD COLUMN IF NOT EXISTS `coding_q2_lang` VARCHAR(20) DEFAULT 'python',
+  ADD COLUMN IF NOT EXISTS `coding_q1_code` LONGTEXT DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS `coding_q2_code` LONGTEXT DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS `test_cases_passed` INT DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS `recruiter_status` VARCHAR(50) DEFAULT 'Under Review',
+  ADD COLUMN IF NOT EXISTS `recruiter_notes` TEXT DEFAULT NULL;
+
+
 
 -- ------------------------------------------------------------------------------
 -- 1. Admins (Recruiters & System Administrators)
@@ -40,7 +65,7 @@ CREATE TABLE IF NOT EXISTS `colleges` (
   INDEX `idx_college_type` (`type`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-INSERT INTO `colleges` (`name`, `code`, `district`, `type`, `qualification_level`) VALUES
+INSERT IGNORE INTO `colleges` (`name`, `code`, `district`, `type`, `qualification_level`) VALUES
   ('Andhra University College of Engineering (AUCE Autonomous), Visakhapatnam', 'AP001', 'Visakhapatnam', 'University', 'UG,PG'),
   ('University College of Engineering Kakinada (UCEK - JNTUK)', 'AP002', 'Kakinada', 'University', 'UG,PG'),
   ('Sri Venkateswara University College of Engineering (SVUCE), Tirupati', 'AP003', 'Tirupati', 'University', 'UG,PG'),
@@ -227,7 +252,7 @@ CREATE TABLE IF NOT EXISTS `courses` (
   `sort_order` INT DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-INSERT INTO `courses` (`qualification`, `code`, `name`, `sort_order`) VALUES
+INSERT IGNORE INTO `courses` (`qualification`, `code`, `name`, `sort_order`) VALUES
 ('Undergraduate', 'B.Tech', 'B.Tech (Bachelor of Technology / B.E.)', 1),
 ('Postgraduate', 'M.Tech', 'M.Tech (Master of Technology / M.E.)', 2),
 ('Undergraduate', 'BCA', 'BCA (Bachelor of Computer Applications)', 3),
@@ -244,7 +269,7 @@ CREATE TABLE IF NOT EXISTS `course_branches` (
   INDEX `idx_branch_course` (`course_code`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-INSERT INTO `course_branches` (`course_code`, `branch_name`, `technical_stream`) VALUES
+INSERT IGNORE INTO `course_branches` (`course_code`, `branch_name`, `technical_stream`) VALUES
 -- B.Tech Branches
 ('B.Tech', 'Computer Science and Engineering', 'CSE'),
 ('B.Tech', 'Artificial Intelligence and Data Science', 'AIDS'),
@@ -406,7 +431,7 @@ CREATE TABLE IF NOT EXISTS `exam_sections` (
   FOREIGN KEY (`exam_id`) REFERENCES `exams`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-INSERT INTO `exam_sections` (`exam_id`, `section_order`, `section_code`, `title`, `duration_minutes`, `total_marks`, `total_questions`, `question_type`, `negative_marking`) VALUES
+INSERT IGNORE INTO `exam_sections` (`exam_id`, `section_order`, `section_code`, `title`, `duration_minutes`, `total_marks`, `total_questions`, `question_type`, `negative_marking`) VALUES
 (1, 1, 'sec-1', 'Section 1: Quantitative Aptitude, Analytical Reasoning & Verbal Ability (Q&A&V)', 35, 40, 40, 'mcq', 0.00),
 (1, 2, 'sec-2', 'Section 2: Technical Core Knowledge (Branch-Specific)', 25, 20, 20, 'mcq', 0.00),
 (1, 3, 'sec-3', 'Section 3: Technical Coding Round (2 Problems x 10 Test Cases)', 30, 40, 2, 'coding', 0.00);
@@ -491,6 +516,7 @@ CREATE TABLE IF NOT EXISTS `exam_attempts` (
   `sec_3_score` DECIMAL(5,2) DEFAULT 0.00,
   `total_score` DECIMAL(5,2) DEFAULT 0.00,
   `percentage` DECIMAL(5,2) DEFAULT 0.00,
+  `test_cases_passed` INT DEFAULT 0,
   `is_passed` TINYINT(1) DEFAULT 0,
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (`student_id`) REFERENCES `students`(`id`) ON DELETE CASCADE,
@@ -583,6 +609,7 @@ CREATE TABLE IF NOT EXISTS `assessments` (
   `total_score` DECIMAL(5,2) DEFAULT 0.00,
   `max_score` DECIMAL(5,2) DEFAULT 100.00,
   `percentage` DECIMAL(5,2) DEFAULT 0.00,
+  `test_cases_passed` INT DEFAULT 0,
   `proctoring_violations` INT DEFAULT 0,
   `violation_details` TEXT DEFAULT NULL,
   `coding_q1_code` MEDIUMTEXT DEFAULT NULL,
@@ -605,7 +632,7 @@ CREATE TABLE IF NOT EXISTS `assessments` (
 -- ------------------------------------------------------------------------------
 -- Seed Default Coding Questions & 10 Test Cases Each (40 Marks total)
 -- ------------------------------------------------------------------------------
-INSERT INTO `coding_questions` (`id`, `title`, `slug`, `difficulty`, `marks`, `description`, `input_format`, `output_format`, `constraints`, `function_name`, `starter_python`, `starter_java`, `starter_cpp`, `starter_js`, `time_limit_ms`, `memory_limit_mb`) VALUES
+INSERT IGNORE INTO `coding_questions` (`id`, `title`, `slug`, `difficulty`, `marks`, `description`, `input_format`, `output_format`, `constraints`, `function_name`, `starter_python`, `starter_java`, `starter_cpp`, `starter_js`, `time_limit_ms`, `memory_limit_mb`) VALUES
 (1, 'Longest Substring Without Repeating Characters', 'longest-unique-substring', 'Medium', 20, 
 'Given a string `s`, find the length of the longest substring without repeating characters.\n\nA substring is a contiguous non-empty sequence of characters within a string.', 
 'A single line containing the string s.', 
@@ -631,14 +658,14 @@ INSERT INTO `coding_questions` (`id`, `title`, `slug`, `difficulty`, `marks`, `d
 2000, 256);
 
 -- 4 Test Cases for Question 1 (2 sample visible, 2 hidden; 5 marks each = 20 Marks, all 4 required)
-INSERT INTO `coding_test_cases` (`question_id`, `test_case_num`, `input_data`, `expected_output`, `is_hidden`, `marks`) VALUES
+INSERT IGNORE INTO `coding_test_cases` (`question_id`, `test_case_num`, `input_data`, `expected_output`, `is_hidden`, `marks`) VALUES
 (1, 1, '"abcabcbb"', '3', 0, 5.0),
 (1, 2, '"bbbbb"', '1', 0, 5.0),
 (1, 3, '"pwwkew"', '3', 1, 5.0),
 (1, 4, '""', '0', 1, 5.0);
 
 -- 4 Test Cases for Question 2 (2 sample visible, 2 hidden; 5 marks each = 20 Marks, all 4 required)
-INSERT INTO `coding_test_cases` (`question_id`, `test_case_num`, `input_data`, `expected_output`, `is_hidden`, `marks`) VALUES
+INSERT IGNORE INTO `coding_test_cases` (`question_id`, `test_case_num`, `input_data`, `expected_output`, `is_hidden`, `marks`) VALUES
 (2, 1, '[2,7,11,15], 9', '[0,1]', 0, 5.0),
 (2, 2, '[3,2,4], 6', '[1,2]', 0, 5.0),
 (2, 3, '[3,3], 6', '[0,1]', 1, 5.0),
@@ -963,3 +990,6 @@ ON DUPLICATE KEY UPDATE
   `correct_option` = VALUES(`correct_option`),
   `explanation` = VALUES(`explanation`);
 
+
+
+SET FOREIGN_KEY_CHECKS = 1;
