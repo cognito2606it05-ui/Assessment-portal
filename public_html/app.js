@@ -146,6 +146,8 @@ const AP_COLLEGES_CATALOG = [
   {"region": "Kakinada, East Godavari & Konaseema", "name": "Swarnandhra Institute of Engineering & Technology, Seethanagaram", "district": "East Godavari", "type": "Private Engineering", "level": "UG,PG"},
   {"region": "Kakinada, East Godavari & Konaseema", "name": "PR Government College (Autonomous), Kakinada", "district": "Kakinada", "type": "Degree & PG College", "level": "UG,PG"},
   {"region": "Kakinada, East Godavari & Konaseema", "name": "Government College (Autonomous), Rajahmundry", "district": "East Godavari", "type": "Degree & PG College", "level": "UG,PG"},
+  {"region": "Kakinada, East Godavari & Konaseema", "name": "Adarsh College of Engineering, Chebrolu, Kakinada", "district": "Kakinada", "type": "Private Engineering", "level": "UG,PG"},
+  {"region": "Kakinada, East Godavari & Konaseema", "name": "Kakinada Institute of Technology and Science (KITS), Divili", "district": "Kakinada", "type": "Private Engineering", "level": "UG,PG"},
   {"region": "Kakinada, East Godavari & Konaseema", "name": "MSN Degree College, Kakinada", "district": "Kakinada", "type": "Degree College", "level": "UG"},
 
   {"region": "Visakhapatnam & Anakapalli", "name": "Gayatri Vidya Parishad College of Engineering (GVPCOE Autonomous), Madhurawada", "district": "Visakhapatnam", "type": "Autonomous Engineering", "level": "UG,PG"},
@@ -224,6 +226,7 @@ const AP_COLLEGES_CATALOG = [
   {"region": "Guntur, Bapatla & Palnadu", "name": "Malineni Perumallu Educational Society Group of Institutions, Pulladigunta", "district": "Guntur", "type": "Private Engineering", "level": "UG,PG"},
   {"region": "Guntur, Bapatla & Palnadu", "name": "Priyadarshini Institute of Technology and Science, Tenali", "district": "Guntur", "type": "Private Engineering", "level": "UG,PG"},
   {"region": "Guntur, Bapatla & Palnadu", "name": "Chebrolu Engineering College, Chebrolu", "district": "Guntur", "type": "Private Engineering", "level": "UG,PG"},
+  {"region": "Guntur, Bapatla & Palnadu", "name": "KKR & KSR Institute of Technology & Sciences (KITS Autonomous), Guntur", "district": "Guntur", "type": "Autonomous Engineering", "level": "UG,PG"},
   {"region": "Guntur, Bapatla & Palnadu", "name": "JKC College (Autonomous), Guntur", "district": "Guntur", "type": "Degree & PG College", "level": "UG,PG"},
   {"region": "Guntur, Bapatla & Palnadu", "name": "Hindu College, Guntur", "district": "Guntur", "type": "Degree & PG College", "level": "UG,PG"},
 

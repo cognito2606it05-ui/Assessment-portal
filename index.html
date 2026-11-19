@@ -521,7 +521,7 @@
                       <input type="text" id="reg-college-search"
                         onkeydown="if(event.key==='Enter'){event.preventDefault(); window.appState.performCollegeSearch();}"
                         oninput="window.appState.renderCollegeOptions(document.getElementById('reg-course').value, this.value)"
-                        placeholder="Type college name or district (e.g. Aditya, JNTU, AUCE, GIET, Kakinada)..."
+                        placeholder="Type college name or district (e.g. Adarsh, Chebrolu, KITS, Divili, Aditya, JNTU)..."
                         class="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-800 focus:ring-2 focus:ring-indigo-500 outline-none bg-slate-50 focus:bg-white transition" />
                     </div>
                     <button type="button" id="btn-search-college" onclick="window.appState.performCollegeSearch()"
@@ -585,6 +585,8 @@
                         <option value="PR Government College (Autonomous), Kakinada" data-district="Kakinada" data-type="Degree &amp; PG College">PR Government College (Autonomous), Kakinada [Kakinada - Degree &amp; PG College]</option>
                         <option value="Government College (Autonomous), Rajahmundry" data-district="East Godavari" data-type="Degree &amp; PG College">Government College (Autonomous), Rajahmundry [East Godavari - Degree &amp; PG College]</option>
                         <option value="MSN Degree College, Kakinada" data-district="Kakinada" data-type="Degree College">MSN Degree College, Kakinada [Kakinada - Degree College]</option>
+                        <option value="Adarsh College of Engineering, Chebrolu, Kakinada" data-district="Kakinada" data-type="Private Engineering">Adarsh College of Engineering, Chebrolu, Kakinada [Kakinada - Private Engineering]</option>
+                        <option value="Kakinada Institute of Technology and Science (KITS), Divili" data-district="Kakinada" data-type="Private Engineering">Kakinada Institute of Technology and Science (KITS), Divili [Kakinada - Private Engineering]</option>
                       </optgroup>
                       <optgroup label="Visakhapatnam & Anakapalli (16)">
                         <option value="Gayatri Vidya Parishad College of Engineering (GVPCOE Autonomous), Madhurawada" data-district="Visakhapatnam" data-type="Autonomous Engineering">Gayatri Vidya Parishad College of Engineering (GVPCOE Autonomous), Madhurawada [Visakhapatnam - Autonomous Engineering]</option>
@@ -667,6 +669,7 @@
                         <option value="Malineni Perumallu Educational Society Group of Institutions, Pulladigunta" data-district="Guntur" data-type="Private Engineering">Malineni Perumallu Educational Society Group of Institutions, Pulladigunta [Guntur - Private Engineering]</option>
                         <option value="Priyadarshini Institute of Technology and Science, Tenali" data-district="Guntur" data-type="Private Engineering">Priyadarshini Institute of Technology and Science, Tenali [Guntur - Private Engineering]</option>
                         <option value="Chebrolu Engineering College, Chebrolu" data-district="Guntur" data-type="Private Engineering">Chebrolu Engineering College, Chebrolu [Guntur - Private Engineering]</option>
+                        <option value="KKR & KSR Institute of Technology & Sciences (KITS Autonomous), Guntur" data-district="Guntur" data-type="Autonomous Engineering">KKR & KSR Institute of Technology & Sciences (KITS Autonomous), Guntur [Guntur - Autonomous Engineering]</option>
                         <option value="JKC College (Autonomous), Guntur" data-district="Guntur" data-type="Degree &amp; PG College">JKC College (Autonomous), Guntur [Guntur - Degree &amp; PG College]</option>
                         <option value="Hindu College, Guntur" data-district="Guntur" data-type="Degree &amp; PG College">Hindu College, Guntur [Guntur - Degree &amp; PG College]</option>
                       </optgroup>
@@ -745,13 +748,22 @@
 
               <div>
                 <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Graduation Year *</label>
-                <select id="reg-year" required class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-800 focus:ring-2 focus:ring-indigo-500 outline-none bg-white">
+                <select id="reg-year" required onchange="toggleOtherYearInput(this.value)" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-800 focus:ring-2 focus:ring-indigo-500 outline-none bg-white">
                   <option value="" selected>-- Select Graduation Year --</option>
-                  <option value="2026">2026</option>
-                  <option value="2025">2025</option>
-                  <option value="2027">2027</option>
+                  <option value="2022">2022</option>
+                  <option value="2023">2023</option>
                   <option value="2024">2024</option>
+                  <option value="2025">2025</option>
+                  <option value="2026">2026 (Final Year)</option>
+                  <option value="2027">2027</option>
+                  <option value="2028">2028</option>
+                  <option value="2029">2029</option>
+                  <option value="Other">Other (Specify Manual Entry)</option>
                 </select>
+
+                <div id="other-year-container" class="hidden mt-2">
+                  <input type="number" id="reg-year-other" min="1990" max="2040" placeholder="Enter graduation year manually (e.g. 2021 / 2030)" class="w-full px-3 py-1.5 border border-indigo-300 rounded-lg text-xs text-slate-800 focus:ring-2 focus:ring-indigo-500 outline-none bg-indigo-50/40" />
+                </div>
               </div>
 
               <div>
@@ -3019,6 +3031,20 @@ Candidate Name</textarea>
       }
     }
 
+        function toggleOtherYearInput(val) {
+      const container = document.getElementById("other-year-container");
+      if (container) {
+        if (val === "Other") {
+          container.classList.remove("hidden");
+          document.getElementById("reg-year-other")?.focus();
+        } else {
+          container.classList.add("hidden");
+          const otherInput = document.getElementById("reg-year-other");
+          if (otherInput) otherInput.value = "";
+        }
+      }
+    }
+
     function toggleOtherCollegeInput(val) {
       const container = document.getElementById("other-college-container");
       if (container) {
@@ -3150,11 +3176,20 @@ Candidate Name</textarea>
         return;
       }
 
-      const year = document.getElementById("reg-year").value;
+      let year = document.getElementById("reg-year").value;
       if (!year) {
         window.appState.showToast("Please select your graduation year from the dropdown.", "warning");
         document.getElementById("reg-year").focus();
         return;
+      }
+      if (year === "Other") {
+        const otherYear = document.getElementById("reg-year-other")?.value.trim();
+        if (!otherYear) {
+          window.appState.showToast("Please enter your graduation year manually.", "warning");
+          document.getElementById("reg-year-other")?.focus();
+          return;
+        }
+        year = otherYear;
       }
       const semester = document.getElementById("reg-semester")?.value || "";
       if (!semester) {

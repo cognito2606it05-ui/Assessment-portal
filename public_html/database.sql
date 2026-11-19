@@ -215,7 +215,10 @@ INSERT IGNORE INTO `colleges` (`name`, `code`, `district`, `type`, `qualificatio
   ('Srinivasa Institute of Technology & Science, Kadapa', 'AP171', 'YSR Kadapa', 'Affiliated Engineering', 'UG,PG'),
   ('Global College of Engineering & Technology, Kadapa', 'AP172', 'YSR Kadapa', 'Affiliated Engineering', 'UG,PG'),
   ('Bharath College of Engineering and Technology for Women, Kadapa', 'AP173', 'YSR Kadapa', 'Affiliated Engineering', 'UG,PG'),
-  ('Government College for Men (Autonomous), Kadapa', 'AP174', 'YSR Kadapa', 'Degree & PG College', 'UG,PG');
+  ('Government College for Men (Autonomous), Kadapa', 'AP174', 'YSR Kadapa', 'Degree & PG College', 'UG,PG'),
+  ('Adarsh College of Engineering, Chebrolu, Kakinada', 'AP175', 'Kakinada', 'Affiliated Engineering', 'UG,PG'),
+  ('Kakinada Institute of Technology and Science (KITS), Divili', 'AP176', 'Kakinada', 'Affiliated Engineering', 'UG,PG'),
+  ('KKR & KSR Institute of Technology & Sciences (KITS Autonomous), Guntur', 'AP177', 'Guntur', 'Autonomous Engineering', 'UG,PG');
 
 -- ------------------------------------------------------------------------------
 -- 3. Qualifications, Courses & Dynamic Branches
