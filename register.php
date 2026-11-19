@@ -94,15 +94,38 @@ $status = "Test Assigned";
 $pdo = getDbConnection();
 if ($pdo) {
     try {
-        // Check if student already exists
-        $checkStmt = $pdo->prepare("SELECT `id`, `registration_id` FROM `students` WHERE LOWER(`email`) = ? LIMIT 1");
-        $checkStmt->execute([$email]);
-        if ($existing = $checkStmt->fetch()) {
+        // 1. Strict Duplicate Check: Email
+        $checkEmailStmt = $pdo->prepare("SELECT `id`, `registration_id` FROM `students` WHERE LOWER(`email`) = ? LIMIT 1");
+        $checkEmailStmt->execute([$email]);
+        if ($existingEmail = $checkEmailStmt->fetch()) {
+            http_response_code(409);
             echo json_encode([
                 "success" => false,
-                "error" => "An account with this email address is already registered (" . $existing['registration_id'] . "). Please sign in directly."
+                "error" => "Duplicate Registration Blocked: An account with email address (" . htmlspecialchars($email) . ") is already registered under Registration ID " . $existingEmail['registration_id'] . ". Duplicate registrations are strictly forbidden. Please sign in directly."
             ]);
             exit;
+        }
+
+        // 2. Strict Duplicate Check: Mobile / Phone Number
+        $cleanMobile = preg_replace('/\D/', '', $mobile);
+        if (!empty($cleanMobile)) {
+            $checkMobileStmt = $pdo->prepare("
+                SELECT `id`, `registration_id`, `full_name` 
+                FROM `students` 
+                WHERE `mobile` = ? 
+                   OR `mobile` = ? 
+                   OR RIGHT(REPLACE(REPLACE(`mobile`, ' ', ''), '-', ''), 10) = RIGHT(?, 10)
+                LIMIT 1
+            ");
+            $checkMobileStmt->execute([$mobile, $cleanMobile, $cleanMobile]);
+            if ($existingMobile = $checkMobileStmt->fetch()) {
+                http_response_code(409);
+                echo json_encode([
+                    "success" => false,
+                    "error" => "Duplicate Registration Blocked: Mobile number (" . htmlspecialchars($mobile) . ") is already registered to candidate '" . htmlspecialchars($existingMobile['full_name']) . "' (" . $existingMobile['registration_id'] . "). Phone numbers must be unique across all applicants."
+                ]);
+                exit;
+            }
         }
 
         $pdo->beginTransaction();
@@ -203,6 +226,18 @@ if ($pdo) {
             $pdo->rollBack();
         }
         error_log("Registration DB Error: " . $e->getMessage());
+        if ($e->getCode() == 23000 || strpos($e->getMessage(), 'Duplicate entry') !== false) {
+            http_response_code(409);
+            $dupMsg = "Duplicate Registration Blocked: This email address or phone number is already registered.";
+            if (stripos($e->getMessage(), 'email') !== false) {
+                $dupMsg = "Duplicate Registration Blocked: Email address (" . htmlspecialchars($email) . ") is already registered.";
+            } elseif (stripos($e->getMessage(), 'mobile') !== false) {
+                $dupMsg = "Duplicate Registration Blocked: Mobile number (" . htmlspecialchars($mobile) . ") is already registered.";
+            }
+            echo json_encode(["success" => false, "error" => $dupMsg]);
+            exit;
+        }
+        http_response_code(500);
         echo json_encode(["success" => false, "error" => "Registration error: " . $e->getMessage()]);
         exit;
     }

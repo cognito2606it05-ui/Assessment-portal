@@ -166,7 +166,7 @@ try {
         }
 
         # API Proxy: Forward API calls directly to Hostinger MySQL backend if enabled
-        $isApiEndpoint = ($request.Url.LocalPath.EndsWith(".php") -or $request.Url.LocalPath.StartsWith("/api/")) -and ($request.Url.LocalPath -ne "/send-otp.php" -and $request.Url.LocalPath -ne "/api/send-otp")
+        $isApiEndpoint = ($request.Url.LocalPath.EndsWith(".php") -or $request.Url.LocalPath.StartsWith("/api/")) -and ($request.Url.LocalPath -ne "/send-otp.php" -and $request.Url.LocalPath -ne "/api/send-otp" -and $request.Url.LocalPath -ne "/check-unique.php" -and $request.Url.LocalPath -ne "/api/check-unique")
         if ($useHostingerDb -and $isApiEndpoint) {
             $proxied = Forward-ToHostinger -req $request -resp $response
             if ($proxied) {
@@ -210,6 +210,54 @@ try {
             } else {
                 '{"success":true,"courses":[],"colleges":[]}'
             }
+            $response.ContentType = "application/json; charset=utf-8"
+            $bytes = [System.Text.Encoding]::UTF8.GetBytes($jsonString)
+            $response.ContentLength64 = $bytes.Length
+            $response.OutputStream.Write($bytes, 0, $bytes.Length)
+            $response.Close()
+            continue
+        }
+
+        # API Route: GET /check-unique.php (Check Unique Email & Phone Number)
+        if ($request.Url.LocalPath -eq "/check-unique.php" -or $request.Url.LocalPath -eq "/api/check-unique") {
+            $qEmail = if ($request.QueryString["email"]) { $request.QueryString["email"].ToString().Trim().ToLower() } else { "" }
+            $qMobile = if ($request.QueryString["mobile"]) { ($request.QueryString["mobile"].ToString() -replace '\D', '') } else { "" }
+
+            $emailFound = $false
+            $mobileFound = $false
+            $foundRegId = $null
+            $foundName = $null
+
+            $studentsStorePath = Join-Path $baseDir "registered_students.json"
+            if (Test-Path $studentsStorePath) {
+                try {
+                    $rawStudents = Get-Content -Raw $studentsStorePath -Encoding UTF8 | ConvertFrom-Json
+                    foreach ($st in @($rawStudents)) {
+                        if ($qEmail -and $st.email -and ($st.email.ToString().Trim().ToLower() -eq $qEmail)) {
+                            $emailFound = $true
+                            $foundRegId = $st.registrationId
+                            $foundName = $st.name
+                        }
+                        if ($qMobile -and $st.mobile) {
+                            $stClean = ($st.mobile.ToString() -replace '\D', '')
+                            if ($stClean -and ($stClean -eq $qMobile -or ($stClean.Length -ge 10 -and $qMobile.Length -ge 10 -and $stClean.Substring($stClean.Length - 10) -eq $qMobile.Substring($qMobile.Length - 10)))) {
+                                $mobileFound = $true
+                                if (-not $foundRegId) { $foundRegId = $st.registrationId }
+                                if (-not $foundName) { $foundName = $st.name }
+                            }
+                        }
+                    }
+                } catch {}
+            }
+
+            $resObj = @{
+                success = $true
+                emailExists = $emailFound
+                mobileExists = $mobileFound
+                existingRegistrationId = $foundRegId
+                existingName = $foundName
+            }
+            $jsonString = $resObj | ConvertTo-Json
             $response.ContentType = "application/json; charset=utf-8"
             $bytes = [System.Text.Encoding]::UTF8.GetBytes($jsonString)
             $response.ContentLength64 = $bytes.Length
@@ -403,31 +451,59 @@ try {
                 } catch {}
             }
 
-            # Strict candidate deduplication by email: update existing if already registered
-            $existingIndex = -1
-            for ($i = 0; $i -lt $allStudents.Count; $i++) {
-                if ($allStudents[$i].email -and ($allStudents[$i].email.ToString().Trim().ToLower() -eq $email)) {
-                    $existingIndex = $i
+            # 1. Strict Duplicate Check: Email
+            $existingEmailSt = $null
+            foreach ($st in $allStudents) {
+                if ($st.email -and ($st.email.ToString().Trim().ToLower() -eq $email.ToLower())) {
+                    $existingEmailSt = $st
                     break
                 }
             }
-
-            if ($existingIndex -ne -1) {
-                $existingSt = $allStudents[$existingIndex]
-                $studentObj.id = $existingSt.id
-                $studentObj.registrationId = if ($existingSt.registrationId) { $existingSt.registrationId } else { $regId }
-                $regId = $studentObj.registrationId
-                if ($existingSt.status -eq "Completed" -or $existingSt.assessment) {
-                    $studentObj.status = $existingSt.status
-                    $studentObj.testStatus = $existingSt.testStatus
-                    $studentObj.assessment = $existingSt.assessment
-                    $studentObj.testScore = $existingSt.testScore
-                    $studentObj.totalScore = $existingSt.totalScore
+            if ($existingEmailSt) {
+                $respObj = @{
+                    success = $false
+                    error = "Duplicate Registration Blocked: An account with email address ($email) is already registered under Registration ID $($existingEmailSt.registrationId). Duplicate registrations are strictly forbidden. Please sign in directly."
                 }
-                $allStudents[$existingIndex] = $studentObj
-            } else {
-                [void]$allStudents.Add($studentObj)
+                $respJson = $respObj | ConvertTo-Json
+                $response.ContentType = "application/json; charset=utf-8"
+                $response.StatusCode = 409
+                $bytes = [System.Text.Encoding]::UTF8.GetBytes($respJson)
+                $response.ContentLength64 = $bytes.Length
+                $response.OutputStream.Write($bytes, 0, $bytes.Length)
+                $response.Close()
+                continue
             }
+
+            # 2. Strict Duplicate Check: Mobile / Phone Number
+            $cleanMobile = if ($payload.mobile) { ($payload.mobile.ToString() -replace '\D', '') } else { "" }
+            $existingMobileSt = $null
+            if ($cleanMobile) {
+                foreach ($st in $allStudents) {
+                    if ($st.mobile) {
+                        $stClean = ($st.mobile.ToString() -replace '\D', '')
+                        if ($stClean -and ($stClean -eq $cleanMobile -or ($stClean.Length -ge 10 -and $cleanMobile.Length -ge 10 -and $stClean.Substring($stClean.Length - 10) -eq $cleanMobile.Substring($cleanMobile.Length - 10)))) {
+                            $existingMobileSt = $st
+                            break
+                        }
+                    }
+                }
+            }
+            if ($existingMobileSt) {
+                $respObj = @{
+                    success = $false
+                    error = "Duplicate Registration Blocked: The mobile number ($($payload.mobile)) is already registered to candidate '$($existingMobileSt.name)' ($($existingMobileSt.registrationId)). Phone numbers must be unique across all applicants."
+                }
+                $respJson = $respObj | ConvertTo-Json
+                $response.ContentType = "application/json; charset=utf-8"
+                $response.StatusCode = 409
+                $bytes = [System.Text.Encoding]::UTF8.GetBytes($respJson)
+                $response.ContentLength64 = $bytes.Length
+                $response.OutputStream.Write($bytes, 0, $bytes.Length)
+                $response.Close()
+                continue
+            }
+
+            [void]$allStudents.Add($studentObj)
 
             try {
                 $allStudents | ConvertTo-Json -Depth 5 | Set-Content -Path $studentsStorePath -Encoding UTF8

@@ -304,7 +304,7 @@ CREATE TABLE IF NOT EXISTS `students` (
   `registration_id` VARCHAR(50) NOT NULL UNIQUE,
   `full_name` VARCHAR(150) NOT NULL,
   `email` VARCHAR(191) NOT NULL UNIQUE,
-  `mobile` VARCHAR(30) NOT NULL,
+  `mobile` VARCHAR(30) NOT NULL UNIQUE,
   `password_hash` VARCHAR(255) NOT NULL,
   `qualification` VARCHAR(50) NOT NULL DEFAULT 'Undergraduate',
   `course` VARCHAR(50) NOT NULL,

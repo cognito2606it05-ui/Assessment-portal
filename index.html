@@ -783,16 +783,22 @@
 
               <div>
                 <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Current Semester *</label>
-                <select id="reg-semester" required class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-800 focus:ring-2 focus:ring-indigo-500 outline-none bg-white">
+                <select id="reg-semester" required onchange="toggleOtherSemesterInput(this.value)" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-800 focus:ring-2 focus:ring-indigo-500 outline-none bg-white">
                   <option value="" selected>-- Select Current Semester --</option>
+                  <option value="Semester 1">Semester 1 (1st Year)</option>
+                  <option value="Semester 2">Semester 2 (1st Year)</option>
+                  <option value="Semester 3">Semester 3 (2nd Year)</option>
+                  <option value="Semester 4">Semester 4 (2nd Year / PG Final)</option>
+                  <option value="Semester 5">Semester 5 (3rd Year)</option>
+                  <option value="Semester 6">Semester 6 (3rd Year)</option>
+                  <option value="Semester 7">Semester 7 (Final Year)</option>
                   <option value="Semester 8 (Final Year)">Semester 8 (Final Year)</option>
-                  <option value="Semester 7">Semester 7</option>
-                  <option value="Semester 6">Semester 6</option>
-                  <option value="Semester 5">Semester 5</option>
-                  <option value="Semester 4 (PG Final)">Semester 4 (PG Final)</option>
-                  <option value="Semester 3 (PG)">Semester 3 (PG)</option>
                   <option value="Graduated">Graduated / Alumnus</option>
+                  <option value="Other">Other (Specify Manual Entry)</option>
                 </select>
+                <div id="other-semester-container" class="hidden mt-2">
+                  <input type="text" id="reg-semester-other" placeholder="Enter current semester or standing manually (e.g. 5th Sem / Passed Out / Diploma)" class="w-full px-3 py-1.5 border border-indigo-300 rounded-lg text-xs text-slate-800 focus:ring-2 focus:ring-indigo-500 outline-none bg-indigo-50/40" />
+                </div>
               </div>
 
               <div>
@@ -828,7 +834,7 @@
                   </span>
                 </div>
                 <div class="flex gap-2">
-                  <input type="email" id="reg-email" required placeholder="student@example.com" oninput="if(window.appState) window.appState.handleEmailInputChanged()" class="flex-1 px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-800 focus:ring-2 focus:ring-indigo-500 outline-none" />
+                  <input type="email" id="reg-email" required placeholder="student@example.com" oninput="if(window.appState) window.appState.handleEmailInputChanged()" onblur="checkEmailUnique(this.value)" class="flex-1 px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-800 focus:ring-2 focus:ring-indigo-500 outline-none" />
                   <button type="button" id="send-otp-btn" onclick="window.appState.sendEmailOtp()" class="px-4 py-2 text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition whitespace-nowrap shadow-sm flex items-center gap-1.5">
                     <i class="fas fa-paper-plane text-xs"></i>Send OTP
                   </button>
@@ -837,6 +843,7 @@
                   <i class="fas fa-shield-alt text-indigo-500"></i> Click <strong>Send OTP</strong> to receive your 6-digit code. Registration is strictly blocked until OTP is verified.
                 </div>
                 <div id="resend-dispatch-status" class="hidden mt-2 text-xs p-2.5 rounded-lg border"></div>
+                <div id="email-duplicate-warning" class="hidden mt-1.5 text-xs text-amber-800 bg-amber-50 border border-amber-200 p-2.5 rounded-lg font-medium"></div>
                 <div id="email-verified-badge" class="hidden mt-2 p-2.5 bg-emerald-50 border border-emerald-200 rounded-lg flex items-center justify-between text-xs text-emerald-800 font-bold">
                   <span class="flex items-center gap-1.5"><i class="fas fa-check-circle text-emerald-600 text-sm"></i> Email address verified successfully! Authorized to complete registration.</span>
                   <span class="text-[11px] font-mono text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded">Verified</span>
@@ -874,9 +881,11 @@
                   <input type="tel" id="reg-mobile" required maxlength="10" inputmode="numeric" pattern="[0-9]{10}"
                     placeholder="9876543210"
                     oninput="this.value = this.value.replace(/\D/g, '').slice(0, 10);"
+                    onblur="checkMobileUnique(this.value)"
                     class="w-full px-3 py-2 text-sm text-slate-800 outline-none bg-transparent" />
                 </div>
-                <span class="text-[10px] text-slate-400 mt-0.5 block">Numeric only, strictly 10 digits</span>
+                <div id="mobile-duplicate-warning" class="hidden mt-1.5 text-xs text-amber-800 bg-amber-50 border border-amber-200 p-2.5 rounded-lg font-medium"></div>
+                <span class="text-[10px] text-slate-400 mt-0.5 block">Numeric only, strictly 10 digits (Unique per candidate)</span>
               </div>
 
               <!-- Alternate Contact Number -->
@@ -2587,9 +2596,14 @@ Candidate Name</textarea>
       </div>
       <h3 class="text-lg font-black text-slate-900 mb-2">Registration Unsuccessful</h3>
       <p id="reg-error-message" class="text-xs text-slate-600 leading-relaxed mb-6"></p>
-      <button onclick="document.getElementById('reg-error-modal').classList.add('hidden')" class="w-full py-2.5 px-4 bg-gradient-to-r from-sky-600 to-blue-600 hover:from-sky-500 hover:to-blue-500 text-white font-bold text-xs rounded-xl transition shadow-sm">
-        Review Form & Try Again
-      </button>
+      <div class="flex flex-col gap-2">
+        <button onclick="document.getElementById('reg-error-modal').classList.add('hidden'); window.appState.routeToView('login-view')" class="w-full py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl transition shadow-sm flex items-center justify-center gap-1.5 cursor-pointer">
+          <i class="fas fa-sign-in-alt"></i> Already Registered? Go to Sign In
+        </button>
+        <button onclick="document.getElementById('reg-error-modal').classList.add('hidden')" class="w-full py-2 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs rounded-xl transition cursor-pointer">
+          Review Form & Correct Details
+        </button>
+      </div>
     </div>
   </div>
 
@@ -3060,6 +3074,64 @@ Candidate Name</textarea>
       }
     }
 
+        function toggleOtherSemesterInput(val) {
+      const container = document.getElementById("other-semester-container");
+      if (container) {
+        if (val === "Other") {
+          container.classList.remove("hidden");
+          document.getElementById("reg-semester-other")?.focus();
+        } else {
+          container.classList.add("hidden");
+          const otherInput = document.getElementById("reg-semester-other");
+          if (otherInput) otherInput.value = "";
+        }
+      }
+    }
+
+    async function checkEmailUnique(emailVal) {
+      const email = (emailVal || "").trim().toLowerCase();
+      const warningEl = document.getElementById("email-duplicate-warning");
+      if (!warningEl) return;
+      if (!email || !email.includes("@")) {
+        warningEl.classList.add("hidden");
+        return;
+      }
+      try {
+        const res = await fetch(`./check-unique.php?email=${encodeURIComponent(email)}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.emailExists) {
+            warningEl.classList.remove("hidden");
+            warningEl.innerHTML = `<i class="fas fa-exclamation-triangle text-amber-600 mr-1.5"></i><strong>Duplicate Notice:</strong> An account with "${email}" is already registered. <a href="javascript:void(0)" onclick="window.appState.routeToView('login-view')" class="text-indigo-600 font-bold underline ml-1">Sign In instead &rarr;</a>`;
+          } else {
+            warningEl.classList.add("hidden");
+          }
+        }
+      } catch (e) {}
+    }
+
+    async function checkMobileUnique(mobileVal) {
+      const mobile = (mobileVal || "").replace(/\D/g, "");
+      const warningEl = document.getElementById("mobile-duplicate-warning");
+      if (!warningEl) return;
+      if (mobile.length !== 10) {
+        warningEl.classList.add("hidden");
+        return;
+      }
+      try {
+        const res = await fetch(`./check-unique.php?mobile=${encodeURIComponent(mobile)}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.mobileExists) {
+            warningEl.classList.remove("hidden");
+            warningEl.innerHTML = `<i class="fas fa-exclamation-triangle text-amber-600 mr-1.5"></i><strong>Duplicate Notice:</strong> Mobile number "+91 ${mobile}" is already registered to another candidate. Phone numbers must be unique.`;
+          } else {
+            warningEl.classList.add("hidden");
+          }
+        }
+      } catch (e) {}
+    }
+
     function toggleOtherYearInput(val) {
       const container = document.getElementById("other-year-container");
       if (container) {
@@ -3229,11 +3301,20 @@ Candidate Name</textarea>
         }
         year = otherYear;
       }
-      const semester = document.getElementById("reg-semester")?.value || "";
+      let semester = document.getElementById("reg-semester")?.value || "";
       if (!semester) {
         window.appState.showToast("Please select your current semester from the dropdown.", "warning");
         document.getElementById("reg-semester").focus();
         return;
+      }
+      if (semester === "Other") {
+        const otherSemester = document.getElementById("reg-semester-other")?.value.trim();
+        if (!otherSemester) {
+          window.appState.showToast("Please enter your current semester manually.", "warning");
+          document.getElementById("reg-semester-other")?.focus();
+          return;
+        }
+        semester = otherSemester;
       }
       const cgpa = document.getElementById("reg-cgpa").value.trim();
       if (!cgpa) {

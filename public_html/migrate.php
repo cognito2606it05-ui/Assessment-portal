@@ -104,6 +104,14 @@ $providedKey = isset($_GET['key']) ? $_GET['key'] : (isset($_POST['key']) ? $_PO
                   // ignored
               }
 
+                            // Enforce unique phone number constraint on students table
+              try {
+                  $pdo->exec("ALTER TABLE `students` ADD UNIQUE KEY `uq_student_mobile` (`mobile`);");
+                  echo '<div class="log-ok">[OK] Ensured unique mobile phone constraint on students table.</div>';
+              } catch (PDOException $e) {
+                  // ignored if key already exists
+              }
+
               $pdo->exec("SET FOREIGN_KEY_CHECKS = 1;");
 
               echo '<div class="log-ok">[SUCCESS] Migration completed! ' . $successCount . ' queries executed successfully (' . $errorCount . ' warnings/errors).</div>';
