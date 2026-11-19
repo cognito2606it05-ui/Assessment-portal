@@ -835,13 +835,32 @@ class AppState {
     try {
       const res = await fetch("./metadata-api.php?action=all");
       if (res.ok) {
-        const data = await res.json();
-        if (data && data.success && Array.isArray(data.colleges) && data.colleges.length > 0) {
-          this.metadata = data;
+        const text = await res.text();
+        const cleanText = text.replace(/^\uFEFF/, "");
+        const data = JSON.parse(cleanText);
+        if (data && data.success) {
+          const mergedCollegesMap = new Map();
+          AP_COLLEGES_CATALOG.forEach(c => {
+            if (c && c.name) mergedCollegesMap.set(c.name.trim().toLowerCase(), { ...c });
+          });
+          if (Array.isArray(data.colleges)) {
+            data.colleges.forEach(c => {
+              if (c && c.name) {
+                const k = c.name.trim().toLowerCase();
+                if (!mergedCollegesMap.has(k)) {
+                  mergedCollegesMap.set(k, { ...c });
+                }
+              }
+            });
+          }
+          this.metadata = {
+            courses: (data.courses && data.courses.length > 0) ? data.courses : AP_COURSES_CATALOG,
+            colleges: Array.from(mergedCollegesMap.values())
+          };
         }
       }
     } catch (e) {
-      console.warn("Metadata API network fallback active; using embedded AP college catalog.");
+      console.warn("Metadata API network fallback active; using embedded AP college catalog.", e);
     }
     this.renderCourseOptions();
     const courseCode = document.getElementById("reg-course")?.value || "";
@@ -877,17 +896,43 @@ class AppState {
     const courses = (this.metadata.courses && this.metadata.courses.length > 0) ? this.metadata.courses : AP_COURSES_CATALOG;
     const courseObj = courses.find(c => c.code === courseCode);
 
+    let branchList = [];
     if (courseObj && Array.isArray(courseObj.branches) && courseObj.branches.length > 0) {
-      streamSelect.innerHTML = `<option value="" selected>-- Select Branch / Specialization --</option>` +
-        courseObj.branches.map(b => `<option value="${b}">${b}</option>`).join("");
-      if (currentStream && courseObj.branches.includes(currentStream)) {
-        streamSelect.value = currentStream;
-      } else {
-        streamSelect.value = "";
-      }
+      branchList = [...courseObj.branches];
     } else {
-      streamSelect.innerHTML = `<option value="" selected>-- Select Branch / Specialization --</option>`;
+      // Default common branches across Engineering & Technology so dropdown is NEVER empty
+      branchList = [
+        "Computer Science and Engineering",
+        "Artificial Intelligence and Data Science",
+        "Artificial Intelligence and Machine Learning",
+        "Information Technology",
+        "Electronics and Communication Engineering",
+        "Electrical and Electronics Engineering",
+        "Mechanical Engineering",
+        "Civil Engineering",
+        "Cyber Security",
+        "Data Science",
+        "Computer Science and Business Systems",
+        "Internet of Things (IoT)",
+        "Software Engineering",
+        "Cloud Computing",
+        "Computer Applications"
+      ];
+    }
+
+    let html = `<option value="" selected>-- Select Branch / Specialization --</option>`;
+    html += branchList.map(b => `<option value="${b}">${b}</option>`).join("");
+    html += `<option value="Other">Other Branch / Specialization (Specify below)</option>`;
+    streamSelect.innerHTML = html;
+
+    if (currentStream && (branchList.includes(currentStream) || currentStream === "Other")) {
+      streamSelect.value = currentStream;
+    } else {
       streamSelect.value = "";
+    }
+
+    if (typeof toggleOtherBranchInput === "function") {
+      toggleOtherBranchInput(streamSelect.value);
     }
 
     const searchVal = document.getElementById("reg-college-search")?.value || "";
@@ -948,10 +993,25 @@ class AppState {
     if (!collegeSelect) return;
 
     const prevValue = collegeSelect.value;
-    let colleges = (this.metadata.colleges && this.metadata.colleges.length > 0)
-      ? this.metadata.colleges
-      : AP_COLLEGES_CATALOG;
 
+    // Always start with AP_COLLEGES_CATALOG map so Adarsh, KITS, and Chebrolu are guaranteed
+    const collegesMap = new Map();
+    AP_COLLEGES_CATALOG.forEach(c => {
+      if (c && c.name) collegesMap.set(c.name.trim().toLowerCase(), { ...c });
+    });
+
+    if (this.metadata && Array.isArray(this.metadata.colleges)) {
+      this.metadata.colleges.forEach(c => {
+        if (c && c.name) {
+          const key = c.name.trim().toLowerCase();
+          if (!collegesMap.has(key)) {
+            collegesMap.set(key, { ...c });
+          }
+        }
+      });
+    }
+
+    let colleges = Array.from(collegesMap.values());
     const q = (searchQuery || "").trim().toLowerCase();
 
     if (q) {
@@ -966,10 +1026,11 @@ class AppState {
       // Standard filter based on course
       const isEngineering = (courseCode === "B.Tech" || courseCode === "M.Tech");
       colleges = colleges.filter(c => {
+        const type = c.type || "";
         if (isEngineering) {
-          return c.type.includes("Engineering") || c.type.includes("Premier") || c.type.includes("University") || c.type.includes("Deemed");
+          return type.includes("Engineering") || type.includes("Premier") || type.includes("University") || type.includes("Deemed") || type.includes("Institute");
         } else {
-          return c.type.includes("Degree") || c.type.includes("University") || c.type.includes("Premier") || c.type.includes("Deemed");
+          return type.includes("Degree") || type.includes("University") || type.includes("Premier") || type.includes("Deemed");
         }
       });
     }
@@ -1025,6 +1086,15 @@ class AppState {
       }
     }
 
+    // Featured Colleges prominently placed at top of list
+    const featuredNames = [
+      "Adarsh College of Engineering, Chebrolu, Kakinada",
+      "Kakinada Institute of Technology and Science (KITS), Divili",
+      "Chebrolu Engineering College, Chebrolu",
+      "KKR & KSR Institute of Technology & Sciences (KITS Autonomous), Guntur"
+    ];
+    const featuredList = colleges.filter(c => featuredNames.includes(c.name));
+
     // Group matching colleges by region
     const grouped = {};
     colleges.forEach(c => {
@@ -1035,10 +1105,20 @@ class AppState {
 
     let html = `<option value=""${!prevValue ? ' selected' : ''}>-- Select Recognized College in Andhra Pradesh --</option>`;
 
+    // If not searching, put Featured & Requested Colleges at the top of dropdown
+    if (featuredList.length > 0 && !q) {
+      html += `<optgroup label="⭐ Featured &amp; Requested Colleges (${featuredList.length})">`;
+      featuredList.forEach(c => {
+        const isSel = (prevValue && c.name === prevValue) ? " selected" : "";
+        html += `<option value="${c.name}" data-district="${c.district || ''}" data-type="${c.type || ''}"${isSel}>⭐ ${c.name} [${c.district || ''} - ${c.type || ''}]</option>`;
+      });
+      html += `</optgroup>`;
+    }
+
     for (const [regionName, list] of Object.entries(grouped)) {
       html += `<optgroup label="${regionName} (${list.length})">`;
       list.forEach(c => {
-        const isSel = (prevValue && c.name === prevValue) ? " selected" : "";
+        const isSel = (prevValue && c.name === prevValue && (q || !featuredList.some(f => f.name === c.name))) ? " selected" : "";
         html += `<option value="${c.name}" data-district="${c.district || ''}" data-type="${c.type || ''}"${isSel}>${c.name} [${c.district || ''} - ${c.type || ''}]</option>`;
       });
       html += `</optgroup>`;
@@ -1058,6 +1138,7 @@ class AppState {
     if (typeof toggleOtherCollegeInput === "function") {
       toggleOtherCollegeInput(collegeSelect.value);
     }
+  }
   }
 
   // --------------------------------------------------------------------------

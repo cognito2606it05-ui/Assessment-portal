@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 // ==============================================================================
 // Metadata API: Curated Andhra Pradesh Colleges, Courses & Dynamic Branches
 // ==============================================================================
@@ -115,6 +115,10 @@ $fallbackCourses = [
 ];
 
 $fallbackColleges = [
+    ['name' => 'Adarsh College of Engineering, Chebrolu, Kakinada', 'district' => 'Kakinada', 'type' => 'Private Engineering', 'level' => 'UG,PG'],
+    ['name' => 'Kakinada Institute of Technology and Science (KITS), Divili', 'district' => 'Kakinada', 'type' => 'Private Engineering', 'level' => 'UG,PG'],
+    ['name' => 'KKR & KSR Institute of Technology & Sciences (KITS Autonomous), Guntur', 'district' => 'Guntur', 'type' => 'Autonomous Engineering', 'level' => 'UG,PG'],
+    ['name' => 'Chebrolu Engineering College, Chebrolu', 'district' => 'Guntur', 'type' => 'Private Engineering', 'level' => 'UG,PG'],
     ['name' => 'Andhra University College of Engineering (AUCE Autonomous), Visakhapatnam', 'district' => 'Visakhapatnam', 'type' => 'State University / Premier', 'level' => 'UG,PG'],
     ['name' => 'University College of Engineering Kakinada (UCEK - JNTUK)', 'district' => 'Kakinada', 'type' => 'State University / Premier', 'level' => 'UG,PG'],
     ['name' => 'Sri Venkateswara University College of Engineering (SVUCE), Tirupati', 'district' => 'Tirupati', 'type' => 'State University / Premier', 'level' => 'UG,PG'],
@@ -324,6 +328,21 @@ try {
             $collegesStmt = $pdo->query("SELECT `id`, `name`, `code`, `district`, `type`, `qualification_level` as level FROM `colleges` WHERE `is_active` = 1 ORDER BY `name` ASC");
             $dbColleges = $collegesStmt->fetchAll();
             if (!empty($dbColleges)) {
+                $existing = [];
+                foreach ($dbColleges as $c) {
+                    $existing[strtolower(trim($c['name']))] = true;
+                }
+                $guaranteed = [
+                    ['name' => 'Adarsh College of Engineering, Chebrolu, Kakinada', 'district' => 'Kakinada', 'type' => 'Private Engineering', 'level' => 'UG,PG'],
+                    ['name' => 'Kakinada Institute of Technology and Science (KITS), Divili', 'district' => 'Kakinada', 'type' => 'Private Engineering', 'level' => 'UG,PG'],
+                    ['name' => 'KKR & KSR Institute of Technology & Sciences (KITS Autonomous), Guntur', 'district' => 'Guntur', 'type' => 'Autonomous Engineering', 'level' => 'UG,PG'],
+                    ['name' => 'Chebrolu Engineering College, Chebrolu', 'district' => 'Guntur', 'type' => 'Private Engineering', 'level' => 'UG,PG']
+                ];
+                foreach ($guaranteed as $gc) {
+                    if (!isset($existing[strtolower(trim($gc['name']))])) {
+                        $dbColleges[] = $gc;
+                    }
+                }
                 $fallbackColleges = $dbColleges;
             }
         }
@@ -337,10 +356,11 @@ $filteredColleges = $fallbackColleges;
 if ($course) {
     $isEngineering = in_array($course, ['B.Tech', 'M.Tech']);
     $filteredColleges = array_filter($fallbackColleges, function($c) use ($isEngineering) {
+        $type = $c['type'] ?? '';
         if ($isEngineering) {
-            return in_array($c['type'], ['University', 'Autonomous Engineering', 'Affiliated Engineering', 'Deemed University']);
+            return stripos($type, 'Engineering') !== false || stripos($type, 'University') !== false || stripos($type, 'National') !== false || stripos($type, 'Autonomous') !== false;
         } else {
-            return in_array($c['type'], ['University', 'Deemed University', 'Degree & PG College']);
+            return stripos($type, 'Degree') !== false || stripos($type, 'University') !== false || stripos($type, 'College') !== false;
         }
     });
     $filteredColleges = array_values($filteredColleges);

@@ -87,6 +87,23 @@ $providedKey = isset($_GET['key']) ? $_GET['key'] : (isset($_POST['key']) ? $_PO
                   }
               }
 
+                            // Explicit check & insertion for requested colleges
+              $guaranteedCollegesSql = "
+              INSERT INTO `colleges` (`name`, `code`, `district`, `type`, `qualification_level`, `is_active`)
+              VALUES 
+              ('Adarsh College of Engineering, Chebrolu, Kakinada', 'AP175', 'Kakinada', 'Affiliated Engineering', 'UG,PG', 1),
+              ('Kakinada Institute of Technology and Science (KITS), Divili', 'AP176', 'Kakinada', 'Affiliated Engineering', 'UG,PG', 1),
+              ('KKR & KSR Institute of Technology & Sciences (KITS Autonomous), Guntur', 'AP177', 'Guntur', 'Autonomous Engineering', 'UG,PG', 1),
+              ('Chebrolu Engineering College, Chebrolu', 'AP054', 'Guntur', 'Affiliated Engineering', 'UG,PG', 1)
+              ON DUPLICATE KEY UPDATE `is_active` = 1;
+              ";
+              try {
+                  $pdo->exec($guaranteedCollegesSql);
+                  echo '<div class="log-ok">[OK] Ensured Adarsh College, KITS Divili, and Chebrolu Engineering College are active in database.</div>';
+              } catch (PDOException $e) {
+                  // ignored
+              }
+
               $pdo->exec("SET FOREIGN_KEY_CHECKS = 1;");
 
               echo '<div class="log-ok">[SUCCESS] Migration completed! ' . $successCount . ' queries executed successfully (' . $errorCount . ' warnings/errors).</div>';
