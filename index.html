@@ -1338,9 +1338,9 @@
             <!-- Assessment Container Header with Quantex Logo -->
             <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-4 border-b border-slate-100 pb-4 mb-4">
               <div class="flex items-start gap-3.5 min-w-0 flex-1">
-                <!-- Cognito Brand Logo Inside Container -->
-                <div class="w-12 h-12 rounded-xl bg-white border border-slate-200 shadow-xs flex items-center justify-center p-1 shrink-0 overflow-hidden" title="Cognito Tech Hub Assessment">
-                  <img src="cognito_logo.webp" alt="Cognito Tech Hub" class="w-full h-full object-contain" />
+                <!-- QIS Brand Logo Inside Container -->
+                <div class="w-14 h-14 rounded-xl bg-white border border-slate-200 shadow-xs flex items-center justify-center p-1 shrink-0 overflow-hidden" title="Quantex Intelligence Systems (QIS)">
+                  <img src="qis_logo.png" alt="Quantex Intelligence Systems (QIS)" class="w-full h-full object-contain" />
                 </div>
                 <div class="min-w-0 flex-1">
                   <div class="flex items-center gap-2 mb-1">
@@ -1428,7 +1428,7 @@
                   </div>
                   <h3 class="font-bold text-slate-900 text-base leading-snug">AARKS Office Productivity, Typing & Business Communication Assessment 2026</h3>
                   <div class="flex items-center gap-2 mt-1.5 flex-wrap text-xs text-slate-500">
-                    <span><i class="fas fa-calendar-alt text-amber-600 mr-1"></i>Scheduled: <strong class="text-slate-700 font-semibold">19/11/2026 (10:00 AM - 11:30 AM)</strong></span>
+                    <span><i class="fas fa-calendar-alt text-amber-600 mr-1"></i>Scheduled: <strong class="text-slate-700 font-semibold">20/11/2026 (10:00 AM - 11:30 AM)</strong></span>
                     <span class="text-slate-300">•</span>
                     <span>Duration: 1 Hr 30 Mins (90 Mins)</span>
                     <span class="text-slate-300">•</span>
@@ -1442,7 +1442,7 @@
             </div>
 
             <!-- Sections Breakdown matching PDF exam paper -->
-            <div class="space-y-2.5 text-xs text-slate-600 mb-6">
+            <div class="space-y-2.5 text-xs text-slate-600 mb-5">
               <div class="flex items-center justify-between p-2.5 rounded bg-slate-50 border border-slate-100 gap-3">
                 <div class="flex items-center gap-2 min-w-0">
                   <i class="fas fa-desktop text-orange-500 shrink-0"></i>
@@ -1468,17 +1468,57 @@
               </div>
             </div>
 
+            <!-- Live Assessment Countdown Notice Box -->
+            <div id="dash-card-2-countdown-banner" class="mb-5 p-4 rounded-xl bg-gradient-to-r from-amber-50 via-orange-50 to-amber-50 border border-amber-200/90 shadow-2xs">
+              <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5">
+                <div class="flex items-center gap-3">
+                  <div class="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-300/50 text-amber-600 flex items-center justify-center text-lg shrink-0">
+                    <i class="fas fa-hourglass-half"></i>
+                  </div>
+                  <div>
+                    <div class="text-xs font-black text-amber-950 uppercase tracking-wide flex items-center gap-2">
+                      <span>Assessment Window Opens Tomorrow Morning</span>
+                      <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-200/70 text-amber-900 border border-amber-300">
+                        <span class="w-1.5 h-1.5 rounded-full bg-amber-600 animate-ping"></span> Live Countdown
+                      </span>
+                    </div>
+                    <p class="text-[11px] text-amber-800 mt-0.5">
+                      Scheduled for <strong>Tomorrow, 20/11/2026 (10:00 AM - 11:30 AM IST)</strong>. Assessment unlocks automatically when the timer reaches zero.
+                    </p>
+                  </div>
+                </div>
+
+                <!-- Digital Countdown Digits -->
+                <div class="flex items-center gap-1.5 self-center sm:self-auto shrink-0 font-mono">
+                  <div class="bg-white border border-amber-300/80 shadow-xs rounded-xl px-2.5 py-1.5 text-center min-w-[50px]">
+                    <span id="dash-cd-hours" class="block font-black text-slate-900 text-base leading-none">--</span>
+                    <span class="block text-[8px] text-slate-400 font-sans font-bold uppercase tracking-wider mt-0.5">Hours</span>
+                  </div>
+                  <span class="font-bold text-amber-600 text-base leading-none">:</span>
+                  <div class="bg-white border border-amber-300/80 shadow-xs rounded-xl px-2.5 py-1.5 text-center min-w-[50px]">
+                    <span id="dash-cd-mins" class="block font-black text-slate-900 text-base leading-none">--</span>
+                    <span class="block text-[8px] text-slate-400 font-sans font-bold uppercase tracking-wider mt-0.5">Mins</span>
+                  </div>
+                  <span class="font-bold text-amber-600 text-base leading-none">:</span>
+                  <div class="bg-white border border-amber-300/80 shadow-xs rounded-xl px-2.5 py-1.5 text-center min-w-[50px]">
+                    <span id="dash-cd-secs" class="block font-black text-amber-600 text-base leading-none">--</span>
+                    <span class="block text-[8px] text-slate-400 font-sans font-bold uppercase tracking-wider mt-0.5">Secs</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <!-- Action & Access Control Button -->
             <div class="flex flex-col sm:flex-row sm:items-center justify-between pt-2 gap-3">
               <div class="text-xs text-slate-500 flex items-center gap-2 flex-wrap">
                 <span><i class="fas fa-shield-alt text-orange-500 mr-1"></i>AI Monitored Sandboxes</span>
                 <span class="text-slate-300">•</span>
                 <span id="dash-sched-badge-2" class="px-2.5 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-800 border border-amber-300 flex items-center gap-1.5 shadow-xs whitespace-nowrap">
-                  <i class="fas fa-calendar-alt text-amber-600"></i> Scheduled on 19/11/2026
+                  <i class="fas fa-calendar-alt text-amber-600"></i> Scheduled on 20/11/2026
                 </span>
               </div>
               <button id="dash-action-btn-2" onclick="window.appState.startOfficeAssessmentFlow()" class="px-5 py-2.5 text-xs font-bold bg-slate-100 text-slate-500 rounded-lg cursor-not-allowed flex items-center justify-center gap-1.5 shadow-none border border-slate-200 shrink-0" disabled>
-                <i class="fas fa-lock text-slate-400"></i> Scheduled on 19/11/2026 (10:00 AM)
+                <i class="fas fa-lock text-slate-400"></i> Scheduled on 20/11/2026 (10:00 AM)
               </button>
             </div>
 
@@ -1553,8 +1593,8 @@
             <h2 class="text-xl font-black text-slate-900">Proctored Examination Guidelines & System Readiness</h2>
             <p class="text-xs text-slate-500 mt-0.5">Please review the rules carefully and ensure your webcam is ready before launching the test.</p>
           </div>
-          <div class="w-12 h-12 rounded-xl bg-white border border-slate-200 shadow-xs flex items-center justify-center p-1 shrink-0 overflow-hidden hidden sm:flex" title="Cognito Tech Hub">
-            <img src="cognito_logo.webp" alt="Cognito Insights" class="w-full h-full object-contain" />
+          <div class="w-14 h-14 rounded-xl bg-white border border-slate-200 shadow-xs flex items-center justify-center p-1 shrink-0 overflow-hidden hidden sm:flex" title="Quantex Intelligence Systems (QIS)">
+            <img src="qis_logo.png" alt="Quantex Intelligence Systems (QIS)" class="w-full h-full object-contain" />
           </div>
         </div>
 

@@ -2364,7 +2364,7 @@ class AppState {
     if (window.assessmentScheduleManager) {
       const status = window.assessmentScheduleManager.getStatus("office-skills-2026");
       if (status.status === "UPCOMING" && !status.canStart) {
-        this.showToast(`This assessment is scheduled. Access locked.`, "warning");
+        this.showToast(`AARKS Assessment is scheduled for tomorrow morning (20/11/2026 at 10:00 AM). Access opens in ${status.countdownText}.`, "warning");
         return;
       }
     }
