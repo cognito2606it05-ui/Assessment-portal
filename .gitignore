@@ -8,5 +8,5 @@ public_html/.env
 *.log
 
 # Build artifacts
-public_html.zip
+*.zip
 

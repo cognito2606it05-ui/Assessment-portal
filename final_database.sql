@@ -8,30 +8,6 @@
 SET FOREIGN_KEY_CHECKS = 0;
 SET NAMES utf8mb4;
 
--- ==============================================================================
--- Idempotent Table Column Upgrades for Existing Hostinger Databases
--- ==============================================================================
-ALTER TABLE `students` 
-  ADD COLUMN IF NOT EXISTS `is_blocked` TINYINT(1) DEFAULT 0,
-  ADD COLUMN IF NOT EXISTS `is_active` TINYINT(1) DEFAULT 1,
-  ADD COLUMN IF NOT EXISTS `college_district` VARCHAR(100) DEFAULT 'Andhra Pradesh',
-  ADD COLUMN IF NOT EXISTS `college_type` VARCHAR(100) DEFAULT 'Autonomous Engineering',
-  ADD COLUMN IF NOT EXISTS `current_semester` VARCHAR(20) DEFAULT 'Final Year',
-  ADD COLUMN IF NOT EXISTS `domain_interest` VARCHAR(100) DEFAULT 'Full Stack Engineering';
-
-ALTER TABLE `assessments`
-  ADD COLUMN IF NOT EXISTS `coding_q1_score` DECIMAL(5,2) DEFAULT 0,
-  ADD COLUMN IF NOT EXISTS `coding_q2_score` DECIMAL(5,2) DEFAULT 0,
-  ADD COLUMN IF NOT EXISTS `coding_q1_lang` VARCHAR(20) DEFAULT 'python',
-  ADD COLUMN IF NOT EXISTS `coding_q2_lang` VARCHAR(20) DEFAULT 'python',
-  ADD COLUMN IF NOT EXISTS `coding_q1_code` LONGTEXT DEFAULT NULL,
-  ADD COLUMN IF NOT EXISTS `coding_q2_code` LONGTEXT DEFAULT NULL,
-  ADD COLUMN IF NOT EXISTS `test_cases_passed` INT DEFAULT 0,
-  ADD COLUMN IF NOT EXISTS `recruiter_status` VARCHAR(50) DEFAULT 'Under Review',
-  ADD COLUMN IF NOT EXISTS `recruiter_notes` TEXT DEFAULT NULL;
-
-
-
 -- ------------------------------------------------------------------------------
 -- 1. Admins (Recruiters & System Administrators)
 -- ------------------------------------------------------------------------------
