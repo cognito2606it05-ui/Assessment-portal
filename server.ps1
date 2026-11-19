@@ -835,24 +835,31 @@ try {
             } elseif ($action -eq "rankings") {
                 $rankList = @()
                 $rankIndex = 1
-                $completedSorted = @($items | Where-Object { $_.status -eq "Completed" -or $_.assessment -or $_.testScore } | Sort-Object -Descending -Property {
+                $completedSorted = @($items | Where-Object { 
+                    ($_.status -eq "Completed" -or $_.testStatus -eq "Completed" -or $_.assessment) -and 
+                    (($_.assessment -and $_.assessment.total_score -ne $null) -or ($_.testScore -and $_.testScore.totalScore -ne $null) -or ($_.totalScore -ne $null))
+                } | Sort-Object -Descending -Property {
                     if ($_.assessment -and $_.assessment.total_score -ne $null) { [int]$_.assessment.total_score }
                     elseif ($_.testScore -and $_.testScore.totalScore -ne $null) { [int]$_.testScore.totalScore }
                     elseif ($_.totalScore -ne $null) { [int]$_.totalScore }
                     else { 0 }
                 })
-                $totalCandCount = [math]::Max(1, $completedSorted.Length)
+                $totalCandCount = $completedSorted.Length
                 foreach ($st in $completedSorted) {
-                    $s1 = if ($st.assessment -and $st.assessment.section_1_score -ne $null) { [int]$st.assessment.section_1_score } else { [math]::Max(28, 38 - ($rankIndex * 2)) }
-                    $s2 = if ($st.assessment -and $st.assessment.section_2_score -ne $null) { [int]$st.assessment.section_2_score } else { [math]::Max(14, 19 - ($rankIndex % 3)) }
-                    $s3 = if ($st.assessment -and $st.assessment.section_3_score -ne $null) { [int]$st.assessment.section_3_score } else { [math]::Max(20, 36 - ($rankIndex * 3)) }
-                    $sc = if ($st.assessment -and $st.assessment.total_score -ne $null) { [int]$st.assessment.total_score } else { ($s1 + $s2 + $s3) }
+                    $s1 = if ($st.assessment -and $st.assessment.section_1_score -ne $null) { [int]$st.assessment.section_1_score } else { 0 }
+                    $s2 = if ($st.assessment -and $st.assessment.section_2_score -ne $null) { [int]$st.assessment.section_2_score } else { 0 }
+                    $s3 = if ($st.assessment -and $st.assessment.section_3_score -ne $null) { [int]$st.assessment.section_3_score } else { 0 }
+                    $sc = if ($st.assessment -and $st.assessment.total_score -ne $null) { [int]$st.assessment.total_score }
+                          elseif ($st.testScore -and $st.testScore.totalScore -ne $null) { [int]$st.testScore.totalScore }
+                          elseif ($st.totalScore -ne $null) { [int]$st.totalScore }
+                          else { ($s1 + $s2 + $s3) }
                     $pct = if ($totalCandCount -gt 1) { [math]::Round(((($totalCandCount - $rankIndex) / ($totalCandCount - 1)) * 100), 1) } else { 100.0 }
                     $regId = if ($st.registrationId) { $st.registrationId } else { "COG-2026-" + $st.id }
                     $candName = if ($st.name) { $st.name } else { "Candidate" }
                     $courseName = if ($st.course) { $st.course } else { "B.Tech" }
                     $streamName = if ($st.stream) { $st.stream } else { "Computer Science and Engineering" }
                     $resultStatus = if ($sc -ge 60) { "Shortlisted" } elseif ($sc -ge 40) { "Qualified" } else { "Rejected" }
+                    $subTime = if ($st.assessment -and $st.assessment.submitted_at) { $st.assessment.submitted_at } elseif ($st.submittedAt) { $st.submittedAt } else { "Recent" }
 
                     $rankList += @{
                         rank = $rankIndex++
@@ -863,7 +870,7 @@ try {
                         registration_id = $regId
                         student_email = $st.email
                         email = $st.email
-                        college = $st.college
+                        college = if ($st.college) { $st.college } else { "Engineering College" }
                         course = $courseName
                         stream = $streamName
                         sec1Score = $s1
@@ -879,13 +886,30 @@ try {
                         violations = 0
                         status = $resultStatus
                         result_status = $resultStatus
-                        submittedAt = if ($st.assessment -and $st.assessment.submitted_at) { $st.assessment.submitted_at } elseif ($st.submittedAt) { $st.submittedAt } else { "2026-11-18 11:34:16" }
-                        submitted_at = if ($st.assessment -and $st.assessment.submitted_at) { $st.assessment.submitted_at } elseif ($st.submittedAt) { $st.submittedAt } else { "2026-11-18 11:34:16" }
+                        submittedAt = $subTime
+                        submitted_at = $subTime
                     }
                 }
                 $respObj = @{
                     success = $true
                     rankings = $rankList
+                    totalAssessed = $totalCandCount
+                }
+            } elseif ($action -eq "clear_all_students" -or $action -eq "purge_data") {
+                $studentsStorePath = Join-Path $baseDir "registered_students.json"
+                @() | ConvertTo-Json | Set-Content -Path $studentsStorePath -Encoding UTF8
+                $global:activeOtps = @{}
+                $global:verifiedEmails = @{}
+
+                if ($useHostingerDb) {
+                    try {
+                        $null = Invoke-RestMethod -Uri "https://contest.cognitoinsights.tech/admin-api.php?action=clear_all_students" -Method Get -TimeoutSec 5
+                    } catch {}
+                }
+
+                $respObj = @{
+                    success = $true
+                    message = "All test candidate records, submissions, and scores have been completely purged! Platform is 100% clean for fresh user registration."
                 }
             } elseif ($action -eq "answer_sheets") {
                 # Check for override_marks subaction

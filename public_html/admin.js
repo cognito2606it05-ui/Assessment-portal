@@ -2145,17 +2145,28 @@ class AdminManager {
       }
     } catch (e) {}
 
-    // Resilient fallback if API or static mock environment
+    // Resilient fallback: only include candidates who have ACTUALLY completed the assessment
     if (!rankings || rankings.length === 0) {
       await this.loadCandidatesFromDb();
-      const candidates = (this.candidates || []);
-      rankings = candidates.map((c, idx) => {
-        const s1 = c.assessment?.section_1_score ?? c.section_1_score ?? (32 + (idx % 8));
-        const s2 = c.assessment?.section_2_score ?? c.section_2_score ?? (16 + (idx % 4));
-        const s3 = c.assessment?.section_3_score ?? c.section_3_score ?? (26 + (idx % 12));
-        const total = c.assessment?.total_score ?? c.totalScore ?? c.total_score ?? (s1 + s2 + s3);
+      const completedCandidates = (this.candidates || []).filter(c => 
+        (c.status === "Completed" || c.testStatus === "Completed" || c.assessment || (c.totalScore != null && c.totalScore > 0))
+      );
+
+      // Sort strictly by total score descending
+      completedCandidates.sort((a, b) => {
+        const scoreA = a.assessment?.total_score ?? a.totalScore ?? a.score ?? 0;
+        const scoreB = b.assessment?.total_score ?? b.totalScore ?? b.score ?? 0;
+        return scoreB - scoreA;
+      });
+
+      const totalCount = completedCandidates.length;
+      rankings = completedCandidates.map((c, idx) => {
+        const s1 = c.assessment?.section_1_score ?? c.section_1_score ?? 0;
+        const s2 = c.assessment?.section_2_score ?? c.section_2_score ?? 0;
+        const s3 = c.assessment?.section_3_score ?? c.section_3_score ?? 0;
+        const total = c.assessment?.total_score ?? c.totalScore ?? (s1 + s2 + s3);
         const rank = idx + 1;
-        const percentile = candidates.length > 1 ? Math.round((((candidates.length - rank) / (candidates.length - 1)) * 100) * 10) / 10 : 100.0;
+        const percentile = totalCount > 1 ? Math.round((((totalCount - rank) / (totalCount - 1)) * 100) * 10) / 10 : 100.0;
         return {
           rank: rank,
           name: c.name || c.student_name || "Candidate",
@@ -2168,6 +2179,7 @@ class AdminManager {
           sec3Score: s3,
           totalScore: total,
           percentile: percentile,
+          submittedAt: c.submittedAt || c.assessment?.submitted_at || c.submitted_at || "Recent",
           status: total >= 60 ? "Shortlisted" : (total >= 40 ? "Qualified" : "Rejected")
         };
       });
@@ -2213,9 +2225,9 @@ class AdminManager {
                 const college = r.college || "Andhra Pradesh Engineering Institution";
                 const course = r.course || "B.Tech";
                 const stream = r.stream || "Computer Science and Engineering";
-                const s1 = r.sec1Score ?? r.section_1_score ?? 35;
-                const s2 = r.sec2Score ?? r.section_2_score ?? 18;
-                const s3 = r.sec3Score ?? r.section_3_score ?? 28;
+                const s1 = r.sec1Score ?? r.section_1_score ?? 0;
+                const s2 = r.sec2Score ?? r.section_2_score ?? 0;
+                const s3 = r.sec3Score ?? r.section_3_score ?? 0;
                 const total = r.totalScore ?? r.total_score ?? (s1 + s2 + s3);
                 const perc = r.percentile != null ? r.percentile : (total >= 60 ? 92.5 : (total >= 40 ? 76.0 : 35.0));
                 const status = r.result_status || r.status || (total >= 60 ? "Shortlisted" : (total >= 40 ? "Qualified" : "Rejected"));
@@ -4715,17 +4727,23 @@ class AdminManager {
   }
 
   async clearAllCandidateData() {
-    const confirmPurge = confirm("WARNING: Are you sure you want to PURGE ALL registered candidates, exam attempts, submissions, and recovery logs? This action is irreversible.");
+    const confirmPurge = confirm("WARNING: Are you sure you want to PURGE ALL registered candidates, test attempts, submissions, and scores? This will reset the platform for a 100% fresh start.");
     if (!confirmPurge) return;
 
     try {
       const res = await fetch("./admin-api.php?action=clear_all_students");
       const data = await res.json();
-      if (data.success) {
-        window.appState.showToast(data.message, "success");
-        await this.renderDashboardOverview(document.getElementById("admin-module-viewport"));
+      if (data && data.success) {
+        window.appState.showToast(data.message || "All test candidate data purged successfully!", "success");
+        this.candidates = [];
+        await this.loadCandidatesFromDb();
+        if (typeof this.navigateModule === "function") {
+          await this.navigateModule(this.currentModule || "overview");
+        } else {
+          await this.renderDashboardOverview(document.getElementById("admin-module-viewport"));
+        }
       } else {
-        window.appState.showToast(data.error || "Purge failed.", "error");
+        window.appState.showToast(data?.error || "Purge failed.", "error");
       }
     } catch (e) {
       window.appState.showToast("Network error purging data.", "error");
