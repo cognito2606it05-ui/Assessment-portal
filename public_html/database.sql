@@ -971,4 +971,18 @@ ON DUPLICATE KEY UPDATE
 
 
 
+-- ------------------------------------------------------------------------------
+-- 27. Single-Device / Single-Session Active Session Tracker
+-- ------------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `student_active_sessions` (
+  `student_id` INT PRIMARY KEY,
+  `device_id` VARCHAR(100) NOT NULL,
+  `session_token` VARCHAR(100) NOT NULL,
+  `ip_address` VARCHAR(50) DEFAULT NULL,
+  `user_agent` VARCHAR(255) DEFAULT NULL,
+  `is_active` TINYINT(1) DEFAULT 1,
+  `last_activity` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (`student_id`) REFERENCES `students`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 SET FOREIGN_KEY_CHECKS = 1;

@@ -15,8 +15,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 require_once __DIR__ . '/db.php';
 
+$pdo = getDbConnection();
 $rawInput = file_get_contents("php://input");
 $data = json_decode($rawInput, true);
+
+// Handle Candidate Logout Action
+if ((isset($_GET['action']) && $_GET['action'] === 'logout') || (!empty($data['action']) && $data['action'] === 'logout')) {
+    $outEmail = strtolower(trim($data['email'] ?? $_GET['email'] ?? ''));
+    if ($outEmail && $pdo) {
+        try {
+            $stId = $pdo->prepare("SELECT id FROM `students` WHERE LOWER(`email`) = ? LIMIT 1");
+            $stId->execute([$outEmail]);
+            if ($sRow = $stId->fetch()) {
+                $pdo->prepare("UPDATE `student_active_sessions` SET `is_active` = 0 WHERE `student_id` = ?")->execute([$sRow['id']]);
+            }
+        } catch (Exception $eLog) {}
+    }
+    echo json_encode(["success" => true, "message" => "Logged out successfully."]);
+    exit;
+}
 
 if (!$data || empty($data['email']) || empty($data['password'])) {
     echo json_encode(["success" => false, "error" => "Please enter your email and password."]);
@@ -26,8 +43,7 @@ if (!$data || empty($data['email']) || empty($data['password'])) {
 $email = strtolower(trim($data['email']));
 $password = trim($data['password']);
 $passLower = strtolower($password);
-
-$pdo = getDbConnection();
+$deviceId = !empty($data['deviceId']) ? trim($data['deviceId']) : '';
 
 // Check if credentials match Admin
 if ($pdo) {
@@ -128,10 +144,80 @@ if ($pdo) {
                        $passLower === 'candidate@2026';
 
             if ($isMatch) {
+                // Ensure active sessions table exists
+                try {
+                    $pdo->exec("
+                        CREATE TABLE IF NOT EXISTS `student_active_sessions` (
+                            `student_id` INT PRIMARY KEY,
+                            `device_id` VARCHAR(100) NOT NULL,
+                            `session_token` VARCHAR(100) NOT NULL,
+                            `ip_address` VARCHAR(50) DEFAULT NULL,
+                            `user_agent` VARCHAR(255) DEFAULT NULL,
+                            `is_active` TINYINT(1) DEFAULT 1,
+                            `last_activity` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+                    ");
+                } catch (Exception $eSessTab) {}
+
                 // Fetch assessment if any
                 $stmt3 = $pdo->prepare("SELECT * FROM `assessments` WHERE `student_id` = ? ORDER BY `id` DESC LIMIT 1");
                 $stmt3->execute([$student['id']]);
                 $assessment = $stmt3->fetch();
+
+                // 1. Strict Exam Already Taken Check: Block if candidate already completed/submitted exam
+                if ($student['status'] === 'Completed' || ($assessment && !empty($assessment['submitted_at']))) {
+                    $subTime = $assessment['submitted_at'] ?? 'previously';
+                    echo json_encode([
+                        "success" => false,
+                        "errorType" => "EXAM_ALREADY_TAKEN",
+                        "error" => "Exam Already Taken: Your examination was completed and submitted on {$subTime}. In accordance with strict Quantex examination security protocols, multiple logins or re-attempting the test is forbidden.",
+                        "submittedAt" => $subTime
+                    ]);
+                    exit;
+                }
+
+                // 2. Strict Concurrent Login Check: If active on PC 1, block PC 2!
+                if (!empty($deviceId)) {
+                    try {
+                        $chkSess = $pdo->prepare("SELECT `device_id`, `is_active`, `last_activity` FROM `student_active_sessions` WHERE `student_id` = ? LIMIT 1");
+                        $chkSess->execute([$student['id']]);
+                        $activeSession = $chkSess->fetch();
+
+                        if ($activeSession && !empty($activeSession['is_active'])) {
+                            $sessTime = strtotime($activeSession['last_activity']);
+                            $isRecentlyActive = (time() - $sessTime) < (4 * 3600); // 4-hour active session window
+                            if ($isRecentlyActive && $activeSession['device_id'] !== $deviceId) {
+                                echo json_encode([
+                                    "success" => false,
+                                    "errorType" => "CONCURRENT_LOGIN_BLOCKED",
+                                    "error" => "Exam Access Restricted: This candidate account is already logged in and active on another computer. To prevent impersonation and maintain assessment integrity, access is granted strictly to the first logged-in computer only.",
+                                    "activeDevice" => true
+                                ]);
+                                exit;
+                            }
+                        }
+                    } catch (Exception $eSessChk) {}
+                }
+
+                // 3. First login user granted access: record active session
+                $newSessionToken = bin2hex(random_bytes(16));
+                $clientIp = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+                $clientUa = substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 250);
+
+                try {
+                    $upsertSess = $pdo->prepare("
+                        INSERT INTO `student_active_sessions` (`student_id`, `device_id`, `session_token`, `ip_address`, `user_agent`, `is_active`, `last_activity`)
+                        VALUES (?, ?, ?, ?, ?, 1, NOW())
+                        ON DUPLICATE KEY UPDATE
+                            `device_id` = VALUES(`device_id`),
+                            `session_token` = VALUES(`session_token`),
+                            `ip_address` = VALUES(`ip_address`),
+                            `user_agent` = VALUES(`user_agent`),
+                            `is_active` = 1,
+                            `last_activity` = NOW()
+                    ");
+                    $upsertSess->execute([$student['id'], $deviceId, $newSessionToken, $clientIp, $clientUa]);
+                } catch (Exception $eUpsert) {}
 
                 // Fetch latest exam attempt status
                 $stmtAttempt = $pdo->prepare("SELECT * FROM `exam_attempts` WHERE `student_id` = ? ORDER BY `id` DESC LIMIT 1");
@@ -167,6 +253,7 @@ if ($pdo) {
                 echo json_encode([
                     "success" => true,
                     "role" => "student",
+                    "sessionToken" => $newSessionToken,
                     "user" => [
                         "id" => $student['id'],
                         "registrationId" => $student['registration_id'] ?? ('COG-2026-' . str_pad($student['id'], 5, '0', STR_PAD_LEFT)),

@@ -1838,7 +1838,8 @@ class AdminManager {
       overrideBtn.onclick = () => this.openMarksOverrideModal(aId, stId, s1, s2, s3, sName);
     }
 
-    this.switchAnswerSheetTab("coding");
+    // Default to MCQ tab so attempted examination questions are immediately visible
+    this.switchAnswerSheetTab("mcq");
 
     const modal = document.getElementById("candidate-answersheet-modal");
     if (modal) modal.classList.remove("hidden");
@@ -2006,8 +2007,35 @@ class AdminManager {
         if (s2Ans[q.id] === q.correctAnswer) s2CorrectCount++;
       });
 
+      const s1Attempted = Object.keys(s1Ans).length;
+      const s2Attempted = Object.keys(s2Ans).length;
+      const totalAttempted = s1Attempted + s2Attempted;
+      const totalCorrect = s1CorrectCount + s2CorrectCount;
+      const totalIncorrect = totalAttempted - totalCorrect;
+      const totalSkipped = 60 - totalAttempted;
+
       container.innerHTML = `
         <div class="space-y-6">
+          <!-- Candidate Attempted Questions Executive KPI Ribbon -->
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-white border border-slate-200 rounded-2xl p-4 shadow-xs">
+            <div class="bg-indigo-50/60 border border-indigo-100 rounded-xl p-3 text-center">
+              <span class="text-[10px] uppercase font-bold text-indigo-700 block mb-0.5">Total Attempted</span>
+              <span class="text-xl font-black text-indigo-900">${totalAttempted} <span class="text-xs text-indigo-500 font-bold">/ 60 Questions</span></span>
+            </div>
+            <div class="bg-emerald-50/60 border border-emerald-100 rounded-xl p-3 text-center">
+              <span class="text-[10px] uppercase font-bold text-emerald-700 block mb-0.5">Correct Answers</span>
+              <span class="text-xl font-black text-emerald-800">+${totalCorrect} <span class="text-xs text-emerald-500 font-bold">Marks</span></span>
+            </div>
+            <div class="bg-red-50/60 border border-red-100 rounded-xl p-3 text-center">
+              <span class="text-[10px] uppercase font-bold text-red-700 block mb-0.5">Incorrect Answers</span>
+              <span class="text-xl font-black text-red-700">${totalIncorrect} <span class="text-xs text-red-400 font-bold">Wrong</span></span>
+            </div>
+            <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 text-center">
+              <span class="text-[10px] uppercase font-bold text-slate-500 block mb-0.5">Unattempted / Skipped</span>
+              <span class="text-xl font-black text-slate-700">${totalSkipped} <span class="text-xs text-slate-400 font-bold">Skipped</span></span>
+            </div>
+          </div>
+
           <!-- Section 1 MCQs -->
           <div class="space-y-3">
             <div class="flex items-center justify-between border-b border-slate-200 pb-2">

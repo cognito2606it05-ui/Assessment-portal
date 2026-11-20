@@ -627,10 +627,11 @@ class AppState {
     }
 
     try {
+      const deviceId = this.getOrCreateDeviceId();
       const response = await fetch("./auth.php", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: cleanEmail, password: cleanPass })
+        body: JSON.stringify({ email: cleanEmail, password: cleanPass, deviceId })
       });
 
       if (response.ok) {
@@ -661,6 +662,13 @@ class AppState {
             this.showToast(`Welcome back, ${data.user.name}!`, "success");
             return;
           }
+        } else if (data && !data.success) {
+          if (data.errorType === "EXAM_ALREADY_TAKEN" || data.errorType === "CONCURRENT_LOGIN_BLOCKED") {
+            this.showSessionSecurityModal(data.errorType, data.error, data.submittedAt);
+            return;
+          }
+          this.showToast(data.error || "Authentication failed.", "error");
+          return;
         }
       }
     } catch (e) {
@@ -761,6 +769,15 @@ class AppState {
   }
 
   logout() {
+    const email = this.currentUser?.email || "";
+    const deviceId = this.getOrCreateDeviceId();
+    if (email) {
+      fetch("./auth.php?action=logout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, deviceId, action: "logout" })
+      }).catch(() => {});
+    }
     this.setCurrentUser(null);
     if (window.proctoring) window.proctoring.cleanup();
     this.clearExamTimer();
@@ -769,6 +786,43 @@ class AppState {
       window.clearLoginCredentials();
     }
     this.showToast("You have been signed out safely.", "info");
+  }
+
+  getOrCreateDeviceId() {
+    let devId = localStorage.getItem("cognito_device_id");
+    if (!devId) {
+      devId = "dev-" + Math.random().toString(36).substring(2, 12) + "-" + Date.now().toString(36);
+      localStorage.setItem("cognito_device_id", devId);
+    }
+    return devId;
+  }
+
+  showSessionSecurityModal(errorType, errorMsg, submittedAt) {
+    const modal = document.getElementById("session-security-modal");
+    const titleEl = document.getElementById("session-modal-title");
+    const msgEl = document.getElementById("session-modal-msg");
+    const badgeEl = document.getElementById("session-modal-badge");
+    const iconEl = document.getElementById("session-modal-icon");
+
+    if (errorType === "EXAM_ALREADY_TAKEN") {
+      if (titleEl) titleEl.textContent = "Examination Already Completed";
+      if (badgeEl) {
+        badgeEl.textContent = "Official Submission Recorded";
+        badgeEl.className = "inline-block px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-100 text-amber-800 mb-2";
+      }
+      if (iconEl) iconEl.className = "fas fa-clipboard-check";
+      if (msgEl) msgEl.innerHTML = `Our examination records show that your assessment was officially submitted on <strong>${submittedAt || 'record'}</strong>.<br/><br/>Under Quantex Intelligence examination protocol, <strong>re-taking the examination or multiple attempts are strictly disallowed</strong>. Your responses are currently under evaluation.`;
+    } else {
+      if (titleEl) titleEl.textContent = "Access Denied: Concurrent Login Detected";
+      if (badgeEl) {
+        badgeEl.textContent = "Single-Device Security Policy";
+        badgeEl.className = "inline-block px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-red-100 text-red-800 mb-2";
+      }
+      if (iconEl) iconEl.className = "fas fa-shield-alt";
+      if (msgEl) msgEl.innerHTML = `Your candidate credentials are <strong>currently logged in and active on another computer/browser</strong>.<br/><br/>To uphold examination confidentiality and prevent impersonation, access is locked exclusively to your <strong>first logged-in computer</strong>. Please return to your original computer to continue.`;
+    }
+
+    if (modal) modal.classList.remove("hidden");
   }
 
   updateStudentDashboard(student) {
@@ -1281,6 +1335,15 @@ class AppState {
   // EXAM FLOW & 3 SECTIONS EXECUTION (100 MARKS TOTAL)
   // --------------------------------------------------------------------------
   startAssessmentFlow(studentId) {
+    if (this.currentUser?.status === "Completed" || this.currentUser?.testStatus === "Completed" || this.currentUser?.assessment) {
+      this.showSessionSecurityModal(
+        "EXAM_ALREADY_TAKEN",
+        "Exam Already Taken: Your examination was already submitted. In accordance with examination regulations, re-taking the assessment is strictly disallowed.",
+        this.currentUser?.assessment?.submitted_at
+      );
+      return;
+    }
+
     if (window.innerWidth < 1280) {
       const modal = document.getElementById("mobile-restriction-modal");
       if (modal) modal.classList.remove("hidden");

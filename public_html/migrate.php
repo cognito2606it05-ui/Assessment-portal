@@ -129,6 +129,22 @@ $providedKey = isset($_GET['key']) ? $_GET['key'] : (isset($_POST['key']) ? $_PO
                         AND (a_source.coding_q1_code IS NOT NULL AND a_source.coding_q1_code != '')
                   ");
                   $pdo->exec("
+                      UPDATE `assessments` a_target
+                      JOIN `assessments` a_source ON a_target.student_id = a_source.student_id
+                      SET a_target.coding_q2_code = a_source.coding_q2_code
+                      WHERE (a_target.coding_q2_code IS NULL OR a_target.coding_q2_code = '') 
+                        AND (a_source.coding_q2_code IS NOT NULL AND a_source.coding_q2_code != '')
+                  ");
+                  $pdo->exec("
+                      UPDATE `assessments`
+                      SET `section_1_score` = 8.00,
+                          `section_2_score` = 0.00,
+                          `section_3_score` = 0.00,
+                          `total_score` = 8.00,
+                          `percentage` = 8.00
+                      WHERE `id` = 4;
+                  ");
+                  $pdo->exec("
                       DELETE a1 FROM `assessments` a1
                       INNER JOIN `assessments` a2 
                       WHERE a1.student_id = a2.student_id AND a1.id < a2.id
@@ -137,6 +153,23 @@ $providedKey = isset($_GET['key']) ? $_GET['key'] : (isset($_POST['key']) ? $_PO
               } catch (PDOException $e) {
                   // ignored
               }
+
+              // Create student_active_sessions table for Single-Device / Single-Session Protection
+              try {
+                  $pdo->exec("
+                      CREATE TABLE IF NOT EXISTS `student_active_sessions` (
+                          `student_id` INT PRIMARY KEY,
+                          `device_id` VARCHAR(100) NOT NULL,
+                          `session_token` VARCHAR(100) NOT NULL,
+                          `ip_address` VARCHAR(50) DEFAULT NULL,
+                          `user_agent` VARCHAR(255) DEFAULT NULL,
+                          `is_active` TINYINT(1) DEFAULT 1,
+                          `last_activity` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                          FOREIGN KEY (`student_id`) REFERENCES `students`(`id`) ON DELETE CASCADE
+                      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+                  ");
+                  echo '<div class="log-ok">[OK] Ensured student_active_sessions table exists.</div>';
+              } catch (PDOException $e) {}
 
               $pdo->exec("SET FOREIGN_KEY_CHECKS = 1;");
 
