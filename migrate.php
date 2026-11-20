@@ -112,6 +112,32 @@ $providedKey = isset($_GET['key']) ? $_GET['key'] : (isset($_POST['key']) ? $_PO
                   // ignored if key already exists
               }
 
+              // Enforce assessment deduplication and data integrity
+              try {
+                  $pdo->exec("
+                      UPDATE `assessments` a_target
+                      JOIN `assessments` a_source ON a_target.student_id = a_source.student_id
+                      SET a_target.answers_json = a_source.answers_json
+                      WHERE (a_target.answers_json IS NULL OR a_target.answers_json = '') 
+                        AND (a_source.answers_json IS NOT NULL AND a_source.answers_json != '')
+                  ");
+                  $pdo->exec("
+                      UPDATE `assessments` a_target
+                      JOIN `assessments` a_source ON a_target.student_id = a_source.student_id
+                      SET a_target.coding_q1_code = a_source.coding_q1_code
+                      WHERE (a_target.coding_q1_code IS NULL OR a_target.coding_q1_code = '') 
+                        AND (a_source.coding_q1_code IS NOT NULL AND a_source.coding_q1_code != '')
+                  ");
+                  $pdo->exec("
+                      DELETE a1 FROM `assessments` a1
+                      INNER JOIN `assessments` a2 
+                      WHERE a1.student_id = a2.student_id AND a1.id < a2.id
+                  ");
+                  echo '<div class="log-ok">[OK] Purged duplicate assessment rows and preserved candidate answers & code.</div>';
+              } catch (PDOException $e) {
+                  // ignored
+              }
+
               $pdo->exec("SET FOREIGN_KEY_CHECKS = 1;");
 
               echo '<div class="log-ok">[SUCCESS] Migration completed! ' . $successCount . ' queries executed successfully (' . $errorCount . ' warnings/errors).</div>';

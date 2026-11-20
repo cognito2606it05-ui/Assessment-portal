@@ -235,71 +235,80 @@ try {
         $stmt->execute($params);
         $rows = $stmt->fetchAll();
 
-        $candidates = [];
+        $dedupMap = [];
         foreach ($rows as $r) {
-            $candidates[] = [
-                "id" => (int)$r['id'],
-                "registrationId" => $r['registration_id'] ?? ('COG-2026-' . str_pad($r['id'], 5, '0', STR_PAD_LEFT)),
-                "name" => $r['full_name'],
-                "email" => $r['email'],
-                "mobile" => $r['mobile'],
-                "qualification" => $r['qualification'] ?? 'Undergraduate',
-                "college" => $r['college'],
-                "collegeDistrict" => $r['college_district'] ?? 'Andhra Pradesh',
-                "collegeType" => $r['college_type'] ?? 'Autonomous Engineering',
-                "course" => $r['course'],
-                "stream" => $r['stream'],
-                "graduationYear" => $r['graduation_year'],
-                "cgpa" => $r['cgpa'],
-                "currentSemester" => $r['current_semester'] ?? 'Final Year',
-                "hasBacklogs" => (bool)$r['has_backlogs'],
-                "backlogsCount" => (int)$r['backlogs_count'],
-                "backlogSubjects" => $r['backlog_subjects'],
-                "hasExamClash" => (bool)$r['has_exam_clash'],
-                "examDates" => $r['exam_dates'],
-                "skills" => $r['skills'] ?? '',
-                "domainInterest" => $r['domain_interest'] ?? '',
-                "status" => $r['status'],
-                "isBlocked" => (bool)$r['is_blocked'],
-                "isActive" => (bool)$r['is_active'],
-                "totalStrikes" => (int)($r['total_strikes'] ?? 0),
-                "tasksCompleted" => (int)($r['tasks_completed'] ?? 0),
-                "tasksTotal" => (int)($r['tasks_total'] ?? 0),
-                "createdAt" => $r['created_at'],
-                "resultPipelineStage" => $r['result_pipeline_stage'] ?? 'Registered',
-                "isPublished" => (bool)$r['is_published_to_student'],
-                "workPreferences" => [
-                    "dayShift" => $r['day_shift'] ?? 'Yes',
-                    "nightShift" => $r['night_shift'] ?? 'Yes',
-                    "preferredShift" => $r['preferred_shift'] ?? 'Both',
-                    "relocate" => $r['relocate'] ?? 'Yes',
-                    "ownAccommodation" => $r['own_accommodation'] ?? 'Yes',
-                    "manageTravelExpenses" => $r['manage_travel_expenses'] ?? 'Yes',
-                    "workFromOffice" => $r['work_from_office'] ?? 'Yes',
-                    "technicalTraining" => $r['technical_training'] ?? 'Yes'
-                ],
-                "assessment" => $r['assessment_id'] ? [
-                    "id" => (int)$r['assessment_id'],
-                    "section1Score" => (float)$r['section_1_score'],
-                    "section2Score" => (float)$r['section_2_score'],
-                    "section3Score" => (float)$r['section_3_score'],
-                    "totalScore" => (float)$r['total_score'],
-                    "maxScore" => (float)$r['max_score'],
-                    "percentage" => (float)$r['percentage'],
-                    "violations" => (int)$r['proctoring_violations'],
-                    "violationDetails" => $r['violation_details'],
-                    "codingQ1Score" => (float)$r['coding_q1_score'],
-                    "codingQ2Score" => (float)$r['coding_q2_score'],
-                    "codingQ1Lang" => $r['coding_q1_lang'],
-                    "codingQ2Lang" => $r['coding_q2_lang'],
-                    "recruiterStatus" => $r['recruiter_status'],
-                    "recruiterNotes" => $r['recruiter_notes'],
-                    "submittedAt" => $r['submitted_at']
-                ] : null
-            ];
+            $sid = (int)$r['id'];
+            $candAssessment = !empty($r['assessment_id']) ? [
+                "id" => (int)$r['assessment_id'],
+                "section1Score" => (float)$r['section_1_score'],
+                "section2Score" => (float)$r['section_2_score'],
+                "section3Score" => (float)$r['section_3_score'],
+                "totalScore" => (float)$r['total_score'],
+                "maxScore" => (float)$r['max_score'],
+                "percentage" => (float)$r['percentage'],
+                "violations" => (int)$r['proctoring_violations'],
+                "violationDetails" => $r['violation_details'],
+                "codingQ1Score" => (float)$r['coding_q1_score'],
+                "codingQ2Score" => (float)$r['coding_q2_score'],
+                "codingQ1Lang" => $r['coding_q1_lang'],
+                "codingQ2Lang" => $r['coding_q2_lang'],
+                "recruiterStatus" => $r['recruiter_status'],
+                "recruiterNotes" => $r['recruiter_notes'],
+                "submittedAt" => $r['submitted_at']
+            ] : null;
+
+            if (!isset($dedupMap[$sid])) {
+                $dedupMap[$sid] = [
+                    "id" => $sid,
+                    "registrationId" => $r['registration_id'] ?? ('COG-2026-' . str_pad($r['id'], 5, '0', STR_PAD_LEFT)),
+                    "name" => $r['full_name'],
+                    "email" => $r['email'],
+                    "mobile" => $r['mobile'],
+                    "qualification" => $r['qualification'] ?? 'Undergraduate',
+                    "college" => $r['college'],
+                    "collegeDistrict" => $r['college_district'] ?? 'Andhra Pradesh',
+                    "collegeType" => $r['college_type'] ?? 'Autonomous Engineering',
+                    "course" => $r['course'],
+                    "stream" => $r['stream'],
+                    "graduationYear" => $r['graduation_year'],
+                    "cgpa" => $r['cgpa'],
+                    "currentSemester" => $r['current_semester'] ?? 'Final Year',
+                    "hasBacklogs" => (bool)$r['has_backlogs'],
+                    "backlogsCount" => (int)$r['backlogs_count'],
+                    "backlogSubjects" => $r['backlog_subjects'],
+                    "hasExamClash" => (bool)$r['has_exam_clash'],
+                    "examDates" => $r['exam_dates'],
+                    "skills" => $r['skills'] ?? '',
+                    "domainInterest" => $r['domain_interest'] ?? '',
+                    "status" => $r['status'],
+                    "isBlocked" => (bool)$r['is_blocked'],
+                    "isActive" => (bool)$r['is_active'],
+                    "totalStrikes" => (int)($r['total_strikes'] ?? 0),
+                    "tasksCompleted" => (int)($r['tasks_completed'] ?? 0),
+                    "tasksTotal" => (int)($r['tasks_total'] ?? 0),
+                    "createdAt" => $r['created_at'],
+                    "resultPipelineStage" => $r['result_pipeline_stage'] ?? 'Registered',
+                    "isPublished" => (bool)$r['is_published_to_student'],
+                    "workPreferences" => [
+                        "dayShift" => $r['day_shift'] ?? 'Yes',
+                        "nightShift" => $r['night_shift'] ?? 'Yes',
+                        "preferredShift" => $r['preferred_shift'] ?? 'Both',
+                        "relocate" => $r['relocate'] ?? 'Yes',
+                        "ownAccommodation" => $r['own_accommodation'] ?? 'Yes',
+                        "manageTravelExpenses" => $r['manage_travel_expenses'] ?? 'Yes',
+                        "workFromOffice" => $r['work_from_office'] ?? 'Yes',
+                        "technicalTraining" => $r['technical_training'] ?? 'Yes'
+                    ],
+                    "assessment" => $candAssessment
+                ];
+            } else {
+                if (empty($dedupMap[$sid]['assessment']) && $candAssessment !== null) {
+                    $dedupMap[$sid]['assessment'] = $candAssessment;
+                }
+            }
         }
 
-        echo json_encode(["success" => true, "candidates" => $candidates]);
+        echo json_encode(["success" => true, "candidates" => array_values($dedupMap)]);
         exit;
     }
 
@@ -473,18 +482,36 @@ try {
                     a.answers_json,
                     s.registration_id, s.full_name as student_name, s.college, s.course, s.stream
                 FROM `assessments` a
+                INNER JOIN (
+                    SELECT student_id, MAX(id) as max_id
+                    FROM `assessments`
+                    GROUP BY student_id
+                ) latest ON a.id = latest.max_id
                 JOIN `students` s ON a.student_id = s.id
                 ORDER BY a.id DESC
             ");
             $sheets = $stmt->fetchAll();
-            foreach ($sheets as &$sh) {
-                $sh['coding_q1_cases_passed'] = intval($sh['coding_q1_score']) === 20 ? 4 : 0;
-                $sh['coding_q1_executed'] = intval($sh['coding_q1_score']) === 20;
-                $sh['coding_q2_cases_passed'] = intval($sh['coding_q2_score']) === 20 ? 4 : 0;
-                $sh['coding_q2_executed'] = intval($sh['coding_q2_score']) === 20;
+            $dedupSheets = [];
+            $seenSid = [];
+            foreach ($sheets as $sh) {
+                $sid = (int)$sh['student_id'];
+                if (isset($seenSid[$sid])) continue;
+                $seenSid[$sid] = true;
+
+                $hasQ1 = !empty($sh['coding_q1_code']);
+                $hasQ2 = !empty($sh['coding_q2_code']);
+                $q1Sc = (float)($sh['coding_q1_score'] ?? 0);
+                $q2Sc = (float)($sh['coding_q2_score'] ?? 0);
+
+                $sh['coding_q1_cases_passed'] = $hasQ1 ? ($q1Sc >= 20 ? 4 : round(($q1Sc / 20) * 4)) : 0;
+                $sh['coding_q1_executed'] = $hasQ1 && $q1Sc >= 20;
+                $sh['coding_q2_cases_passed'] = $hasQ2 ? ($q2Sc >= 20 ? 4 : round(($q2Sc / 20) * 4)) : 0;
+                $sh['coding_q2_executed'] = $hasQ2 && $q2Sc >= 20;
                 $sh['coding_problems_executed'] = ($sh['coding_q1_executed'] ? 1 : 0) + ($sh['coding_q2_executed'] ? 1 : 0);
+
+                $dedupSheets[] = $sh;
             }
-            echo json_encode(["success" => true, "answerSheets" => $sheets]);
+            echo json_encode(["success" => true, "answerSheets" => $dedupSheets]);
             exit;
         }
 
@@ -540,6 +567,41 @@ try {
     // 7. ADMIN-ONLY LIVE RANKING & LEADERBOARD (Module 12)
     // --------------------------------------------------------------------------
     if ($action === 'rankings') {
+        // Run automated deduplication to ensure exactly ONE assessment per student in MySQL
+        try {
+            $pdo->exec("
+                UPDATE `assessments` a_target
+                JOIN `assessments` a_source ON a_target.student_id = a_source.student_id
+                SET a_target.answers_json = a_source.answers_json
+                WHERE (a_target.answers_json IS NULL OR a_target.answers_json = '') 
+                  AND (a_source.answers_json IS NOT NULL AND a_source.answers_json != '')
+            ");
+            $pdo->exec("
+                UPDATE `assessments` a_target
+                JOIN `assessments` a_source ON a_target.student_id = a_source.student_id
+                SET a_target.coding_q1_code = a_source.coding_q1_code
+                WHERE (a_target.coding_q1_code IS NULL OR a_target.coding_q1_code = '') 
+                  AND (a_source.coding_q1_code IS NOT NULL AND a_source.coding_q1_code != '')
+            ");
+            $pdo->exec("
+                UPDATE `assessments` a_target
+                JOIN `assessments` a_source ON a_target.student_id = a_source.student_id
+                SET a_target.coding_q2_code = a_source.coding_q2_code
+                WHERE (a_target.coding_q2_code IS NULL OR a_target.coding_q2_code = '') 
+                  AND (a_source.coding_q2_code IS NOT NULL AND a_source.coding_q2_code != '')
+            ");
+            $pdo->exec("
+                DELETE a1 FROM `assessments` a1
+                INNER JOIN `assessments` a2 
+                WHERE a1.student_id = a2.student_id AND a1.id < a2.id
+            ");
+            $pdo->exec("
+                DELETE r1 FROM `result_approvals` r1
+                INNER JOIN `result_approvals` r2 
+                WHERE r1.student_id = r2.student_id AND r1.id < r2.id
+            ");
+        } catch (Exception $eDedup) {}
+
         $rankedRows = safeQueryFetchAll($pdo, "
             SELECT 
                 a.id as assessment_id, a.student_id,
@@ -547,15 +609,30 @@ try {
                 a.section_1_score, a.section_2_score, a.section_3_score, a.total_score, a.percentage,
                 a.proctoring_violations, a.recruiter_status, a.submitted_at
             FROM `assessments` a
+            INNER JOIN (
+                SELECT student_id, MAX(id) as max_id
+                FROM `assessments`
+                GROUP BY student_id
+            ) latest ON a.id = latest.max_id
             JOIN `students` s ON a.student_id = s.id
-            ORDER BY a.total_score DESC, a.percentage DESC, a.proctoring_violations ASC
+            ORDER BY a.total_score DESC, a.percentage DESC, a.submitted_at ASC
         ");
 
         $rankings = [];
-        $rank = 1;
-        $totalCandidates = count($rankedRows);
-
+        $seenStudents = [];
+        $uniqueRows = [];
         foreach ($rankedRows as $r) {
+            $sid = (int)$r['student_id'];
+            if (!isset($seenStudents[$sid])) {
+                $seenStudents[$sid] = true;
+                $uniqueRows[] = $r;
+            }
+        }
+
+        $totalCandidates = count($uniqueRows);
+        $rank = 1;
+
+        foreach ($uniqueRows as $r) {
             $percentile = $totalCandidates > 1 ? round((($totalCandidates - $rank) / ($totalCandidates - 1)) * 100, 1) : 100.0;
             $rankings[] = [
                 "rank" => $rank,

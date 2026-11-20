@@ -67,54 +67,84 @@ if ($pdo) {
         if ($student) {
             $studentId = $student['id'];
 
-            // 1. Insert or update `assessments` record
-            $insStmt = $pdo->prepare("
-                INSERT INTO `assessments` (
-                    `student_id`, `student_email`, `section_1_score`, `section_2_score`,
-                    `section_3_score`, `total_score`, `max_score`, `percentage`,
-                    `proctoring_violations`, `violation_details`,
-                    `coding_q1_code`, `coding_q1_lang`, `coding_q1_score`,
-                    `coding_q2_code`, `coding_q2_lang`, `coding_q2_score`,
-                    `answers_json`, `recruiter_status`
-                ) VALUES (
-                    ?, ?, ?, ?,
-                    ?, ?, ?, ?,
-                    ?, ?,
-                    ?, ?, ?,
-                    ?, ?, ?,
-                    ?, ?
-                )
-                ON DUPLICATE KEY UPDATE
-                    `section_1_score` = VALUES(`section_1_score`),
-                    `section_2_score` = VALUES(`section_2_score`),
-                    `section_3_score` = VALUES(`section_3_score`),
-                    `total_score` = VALUES(`total_score`),
-                    `max_score` = VALUES(`max_score`),
-                    `percentage` = VALUES(`percentage`),
-                    `proctoring_violations` = VALUES(`proctoring_violations`),
-                    `violation_details` = VALUES(`violation_details`),
-                    `coding_q1_code` = VALUES(`coding_q1_code`),
-                    `coding_q1_lang` = VALUES(`coding_q1_lang`),
-                    `coding_q1_score` = VALUES(`coding_q1_score`),
-                    `coding_q2_code` = VALUES(`coding_q2_code`),
-                    `coding_q2_lang` = VALUES(`coding_q2_lang`),
-                    `coding_q2_score` = VALUES(`coding_q2_score`),
-                    `answers_json` = VALUES(`answers_json`),
-                    `recruiter_status` = VALUES(`recruiter_status`)
-            ");
+            // 1. Strict Upsert: Exactly ONE assessment row per student
+            $chkAss = $pdo->prepare("SELECT id FROM `assessments` WHERE `student_id` = ? ORDER BY id DESC LIMIT 1");
+            $chkAss->execute([$studentId]);
+            $existingAss = $chkAss->fetch();
 
             $recruiterStatus = $isPassed ? 'Shortlisted' : 'Under Review';
-            $insStmt->execute([
-                $studentId, $email, $s1, $s2,
-                $s3Coding, $total, $max, $percentage,
-                $violations, $violationDetails,
-                $q1Code, $q1Lang, $q1Score,
-                $q2Code, $q2Lang, $q2Score,
-                $answersJson, $recruiterStatus
-            ]);
+            $assessmentId = null;
 
-            // 2. Update `exam_attempts` table
-            if ($attemptId) {
+            if ($existingAss) {
+                $assessmentId = (int)$existingAss['id'];
+                $updStmt = $pdo->prepare("
+                    UPDATE `assessments` SET
+                        `student_email` = ?,
+                        `section_1_score` = ?,
+                        `section_2_score` = ?,
+                        `section_3_score` = ?,
+                        `total_score` = ?,
+                        `max_score` = ?,
+                        `percentage` = ?,
+                        `proctoring_violations` = ?,
+                        `violation_details` = ?,
+                        `coding_q1_code` = ?,
+                        `coding_q1_lang` = ?,
+                        `coding_q1_score` = ?,
+                        `coding_q2_code` = ?,
+                        `coding_q2_lang` = ?,
+                        `coding_q2_score` = ?,
+                        `answers_json` = ?,
+                        `recruiter_status` = ?,
+                        `submitted_at` = NOW()
+                    WHERE `id` = ?
+                ");
+                $updStmt->execute([
+                    $email, $s1, $s2,
+                    $s3Coding, $total, $max, $percentage,
+                    $violations, $violationDetails,
+                    $q1Code, $q1Lang, $q1Score,
+                    $q2Code, $q2Lang, $q2Score,
+                    $answersJson, $recruiterStatus,
+                    $assessmentId
+                ]);
+            } else {
+                $insStmt = $pdo->prepare("
+                    INSERT INTO `assessments` (
+                        `student_id`, `student_email`, `section_1_score`, `section_2_score`,
+                        `section_3_score`, `total_score`, `max_score`, `percentage`,
+                        `proctoring_violations`, `violation_details`,
+                        `coding_q1_code`, `coding_q1_lang`, `coding_q1_score`,
+                        `coding_q2_code`, `coding_q2_lang`, `coding_q2_score`,
+                        `answers_json`, `recruiter_status`, `submitted_at`
+                    ) VALUES (
+                        ?, ?, ?, ?,
+                        ?, ?, ?, ?,
+                        ?, ?,
+                        ?, ?, ?,
+                        ?, ?, ?,
+                        ?, ?, NOW()
+                    )
+                ");
+                $insStmt->execute([
+                    $studentId, $email, $s1, $s2,
+                    $s3Coding, $total, $max, $percentage,
+                    $violations, $violationDetails,
+                    $q1Code, $q1Lang, $q1Score,
+                    $q2Code, $q2Lang, $q2Score,
+                    $answersJson, $recruiterStatus
+                ]);
+                $assessmentId = (int)$pdo->lastInsertId();
+            }
+
+            // Deduplicate: purge any stale duplicate assessment rows for this student
+            try {
+                $delDup = $pdo->prepare("DELETE FROM `assessments` WHERE `student_id` = ? AND `id` != ?");
+                $delDup->execute([$studentId, $assessmentId]);
+            } catch (Exception $eDup) {}
+
+            // 2. Ensure Attempt in `exam_attempts` & retrieve attemptId
+            if ($attemptId > 0) {
                 $updAttempt = $pdo->prepare("
                     UPDATE `exam_attempts`
                     SET `status` = 'Completed',
@@ -130,28 +160,97 @@ if ($pdo) {
                 ");
                 $updAttempt->execute([$s1, $s2, $s3Coding, $total, $percentage, $isPassed, $violations, $attemptId]);
             } else {
-                // Check if active attempt exists
-                $updAttempt = $pdo->prepare("
-                    UPDATE `exam_attempts`
-                    SET `status` = 'Completed',
-                        `end_time` = NOW(),
-                        `sec_1_score` = ?,
-                        `sec_2_score` = ?,
-                        `sec_3_score` = ?,
-                        `total_score` = ?,
-                        `percentage` = ?,
-                        `is_passed` = ?,
-                        `violations_count` = ?
-                    WHERE `student_id` = ? AND `status` = 'In Progress'
-                ");
-                $updAttempt->execute([$s1, $s2, $s3Coding, $total, $percentage, $isPassed, $violations, $studentId]);
+                $chkAtt = $pdo->prepare("SELECT id FROM `exam_attempts` WHERE `student_id` = ? ORDER BY id DESC LIMIT 1");
+                $chkAtt->execute([$studentId]);
+                $foundAtt = $chkAtt->fetch();
+                if ($foundAtt) {
+                    $attemptId = (int)$foundAtt['id'];
+                    $pdo->prepare("
+                        UPDATE `exam_attempts`
+                        SET `status` = 'Completed',
+                            `end_time` = NOW(),
+                            `sec_1_score` = ?,
+                            `sec_2_score` = ?,
+                            `sec_3_score` = ?,
+                            `total_score` = ?,
+                            `percentage` = ?,
+                            `is_passed` = ?,
+                            `violations_count` = ?
+                        WHERE `id` = ?
+                    ")->execute([$s1, $s2, $s3Coding, $total, $percentage, $isPassed, $violations, $attemptId]);
+                } else {
+                    $insAtt = $pdo->prepare("
+                        INSERT INTO `exam_attempts` (
+                            `student_id`, `exam_id`, `status`, `start_time`, `end_time`,
+                            `sec_1_score`, `sec_2_score`, `sec_3_score`, `total_score`,
+                            `percentage`, `is_passed`, `violations_count`
+                        ) VALUES (?, 1, 'Completed', NOW(), NOW(), ?, ?, ?, ?, ?, ?, ?)
+                    ");
+                    $insAtt->execute([$studentId, $s1, $s2, $s3Coding, $total, $percentage, $isPassed, $violations]);
+                    $attemptId = (int)$pdo->lastInsertId();
+                }
             }
 
-            // 3. Update student status to Completed
+            // 3. Save Question-by-Question Responses in `student_answers`
+            if (!empty($data['answers']) && is_array($data['answers'])) {
+                try {
+                    $pdo->prepare("DELETE FROM `student_answers` WHERE `student_id` = ?")->execute([$studentId]);
+                    $insAns = $pdo->prepare("
+                        INSERT INTO `student_answers` (`attempt_id`, `student_id`, `section_id`, `question_id`, `selected_option`, `client_timestamp`)
+                        VALUES (?, ?, ?, ?, ?, ?)
+                    ");
+                    $ansPayload = $data['answers'];
+                    if (isset($ansPayload['section1']) && is_array($ansPayload['section1'])) {
+                        foreach ($ansPayload['section1'] as $qKey => $val) {
+                            $insAns->execute([$attemptId, $studentId, 'section1', (string)$qKey, (string)$val, time() * 1000]);
+                        }
+                    }
+                    if (isset($ansPayload['section2']) && is_array($ansPayload['section2'])) {
+                        foreach ($ansPayload['section2'] as $qKey => $val) {
+                            $insAns->execute([$attemptId, $studentId, 'section2', (string)$qKey, (string)$val, time() * 1000]);
+                        }
+                    }
+                } catch (Exception $eAns) {}
+            }
+
+            // 4. Save Candidate's Code into `coding_submissions`
+            try {
+                $pdo->prepare("DELETE FROM `coding_submissions` WHERE `attempt_id` = ?")->execute([$attemptId]);
+                if (!empty($q1Code)) {
+                    $pdo->prepare("
+                        INSERT INTO `coding_submissions` (`attempt_id`, `question_id`, `language`, `source_code`, `passed_test_cases`, `total_test_cases`, `score_awarded`, `all_passed`)
+                        VALUES (?, 1, ?, ?, ?, 4, ?, ?)
+                    ")->execute([$attemptId, $q1Lang, $q1Code, $q1CasesPassed, $q1Score, $q1Score >= 20 ? 1 : 0]);
+                }
+                if (!empty($q2Code)) {
+                    $pdo->prepare("
+                        INSERT INTO `coding_submissions` (`attempt_id`, `question_id`, `language`, `source_code`, `passed_test_cases`, `total_test_cases`, `score_awarded`, `all_passed`)
+                        VALUES (?, 2, ?, ?, ?, 4, ?, ?)
+                    ")->execute([$attemptId, $q2Lang, $q2Code, $q2CasesPassed, $q2Score, $q2Score >= 20 ? 1 : 0]);
+                }
+            } catch (Exception $eCodeSub) {}
+
+            // 5. Update `answer_sheet_evaluations`
+            try {
+                $pdo->prepare("
+                    INSERT INTO `answer_sheet_evaluations` (
+                        `assessment_id`, `student_id`, `evaluator_name`, `section_1_score`,
+                        `section_2_score`, `section_3_score`, `total_score`, `evaluator_notes`, `evaluation_status`
+                    ) VALUES (?, ?, 'Automated Evaluation Engine', ?, ?, ?, ?, 'Submitted in Real-Time', 'Completed')
+                    ON DUPLICATE KEY UPDATE
+                        `section_1_score` = VALUES(`section_1_score`),
+                        `section_2_score` = VALUES(`section_2_score`),
+                        `section_3_score` = VALUES(`section_3_score`),
+                        `total_score` = VALUES(`total_score`),
+                        `evaluation_status` = 'Completed'
+                ")->execute([$assessmentId, $studentId, $s1, $s2, $s3Coding, $total]);
+            } catch (Exception $eEval) {}
+
+            // 6. Update student status to Completed
             $updStud = $pdo->prepare("UPDATE `students` SET `status` = 'Completed' WHERE `id` = ?");
             $updStud->execute([$studentId]);
 
-            // 4. Update 10-Stage Pipeline Status (provisional, unpublished)
+            // 7. Update 10-Stage Pipeline Status (provisional, unpublished)
             try {
                 $updPipe = $pdo->prepare("
                     INSERT INTO `result_approvals` (

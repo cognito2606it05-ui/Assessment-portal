@@ -50,6 +50,70 @@ function Forward-ToHostinger {
 
         $webRes = Invoke-WebRequest @webParams
         $content = $webRes.Content
+
+        if ($req.Url.PathAndQuery.Contains("action=rankings")) {
+            try {
+                $rankData = $content | ConvertFrom-Json
+                if ($rankData.success -and $rankData.rankings) {
+                    $seen = @{}
+                    $uniqueRankings = @()
+                    foreach ($r in $rankData.rankings) {
+                        $key = if ($r.studentId) { $r.studentId } else { $r.registrationId }
+                        if (-not $seen.ContainsKey($key)) {
+                            $seen[$key] = $true
+                            $uniqueRankings += $r
+                        }
+                    }
+                    $tot = $uniqueRankings.Count
+                    for ($i = 0; $i -lt $tot; $i++) {
+                        $uniqueRankings[$i].rank = $i + 1
+                        $uniqueRankings[$i].percentile = if ($tot -gt 1) { [Math]::Round((($tot - ($i + 1)) / ($tot - 1)) * 100, 1) } else { 100.0 }
+                    }
+                    $rankData.rankings = $uniqueRankings
+                    $rankData.totalAssessed = $tot
+                    $content = $rankData | ConvertTo-Json -Depth 6
+                }
+            } catch {}
+        }
+
+        if ($req.Url.PathAndQuery.Contains("action=answer_sheets")) {
+            try {
+                $sheetData = $content | ConvertFrom-Json
+                if ($sheetData.success -and $sheetData.answerSheets) {
+                    $seen = @{}
+                    $uniqueSheets = @()
+                    foreach ($sh in $sheetData.answerSheets) {
+                        $key = if ($sh.student_id) { $sh.student_id } else { $sh.registration_id }
+                        if (-not $seen.ContainsKey($key)) {
+                            $seen[$key] = $true
+                            $uniqueSheets += $sh
+                        }
+                    }
+                    $sheetData.answerSheets = $uniqueSheets
+                    $content = $sheetData | ConvertTo-Json -Depth 6
+                }
+            } catch {}
+        }
+
+        if ($req.Url.PathAndQuery.Contains("action=candidates")) {
+            try {
+                $candData = $content | ConvertFrom-Json
+                if ($candData.success -and $candData.candidates) {
+                    $seen = @{}
+                    $uniqueCands = @()
+                    foreach ($c in $candData.candidates) {
+                        $key = if ($c.id) { $c.id } else { $c.registrationId }
+                        if (-not $seen.ContainsKey($key)) {
+                            $seen[$key] = $true
+                            $uniqueCands += $c
+                        }
+                    }
+                    $candData.candidates = $uniqueCands
+                    $content = $candData | ConvertTo-Json -Depth 6
+                }
+            } catch {}
+        }
+
         $bytes = [System.Text.Encoding]::UTF8.GetBytes($content)
 
         $resp.StatusCode = [int]$webRes.StatusCode
@@ -166,7 +230,7 @@ try {
         }
 
         # API Proxy: Forward API calls directly to Hostinger MySQL backend if enabled
-        $isApiEndpoint = ($request.Url.LocalPath.EndsWith(".php") -or $request.Url.LocalPath.StartsWith("/api/")) -and ($request.Url.LocalPath -ne "/send-otp.php" -and $request.Url.LocalPath -ne "/api/send-otp")
+        $isApiEndpoint = ($request.Url.LocalPath.EndsWith(".php") -or $request.Url.LocalPath.StartsWith("/api/")) -and ($request.Url.LocalPath -ne "/send-otp.php" -and $request.Url.LocalPath -ne "/api/send-otp" -and $request.Url.LocalPath -ne "/check-unique.php" -and $request.Url.LocalPath -ne "/api/check-unique")
         if ($useHostingerDb -and $isApiEndpoint) {
             $proxied = Forward-ToHostinger -req $request -resp $response
             if ($proxied) {
@@ -210,6 +274,54 @@ try {
             } else {
                 '{"success":true,"courses":[],"colleges":[]}'
             }
+            $response.ContentType = "application/json; charset=utf-8"
+            $bytes = [System.Text.Encoding]::UTF8.GetBytes($jsonString)
+            $response.ContentLength64 = $bytes.Length
+            $response.OutputStream.Write($bytes, 0, $bytes.Length)
+            $response.Close()
+            continue
+        }
+
+        # API Route: GET /check-unique.php (Check Unique Email & Phone Number)
+        if ($request.Url.LocalPath -eq "/check-unique.php" -or $request.Url.LocalPath -eq "/api/check-unique") {
+            $qEmail = if ($request.QueryString["email"]) { $request.QueryString["email"].ToString().Trim().ToLower() } else { "" }
+            $qMobile = if ($request.QueryString["mobile"]) { ($request.QueryString["mobile"].ToString() -replace '\D', '') } else { "" }
+
+            $emailFound = $false
+            $mobileFound = $false
+            $foundRegId = $null
+            $foundName = $null
+
+            $studentsStorePath = Join-Path $baseDir "registered_students.json"
+            if (Test-Path $studentsStorePath) {
+                try {
+                    $rawStudents = Get-Content -Raw $studentsStorePath -Encoding UTF8 | ConvertFrom-Json
+                    foreach ($st in @($rawStudents)) {
+                        if ($qEmail -and $st.email -and ($st.email.ToString().Trim().ToLower() -eq $qEmail)) {
+                            $emailFound = $true
+                            $foundRegId = $st.registrationId
+                            $foundName = $st.name
+                        }
+                        if ($qMobile -and $st.mobile) {
+                            $stClean = ($st.mobile.ToString() -replace '\D', '')
+                            if ($stClean -and ($stClean -eq $qMobile -or ($stClean.Length -ge 10 -and $qMobile.Length -ge 10 -and $stClean.Substring($stClean.Length - 10) -eq $qMobile.Substring($qMobile.Length - 10)))) {
+                                $mobileFound = $true
+                                if (-not $foundRegId) { $foundRegId = $st.registrationId }
+                                if (-not $foundName) { $foundName = $st.name }
+                            }
+                        }
+                    }
+                } catch {}
+            }
+
+            $resObj = @{
+                success = $true
+                emailExists = $emailFound
+                mobileExists = $mobileFound
+                existingRegistrationId = $foundRegId
+                existingName = $foundName
+            }
+            $jsonString = $resObj | ConvertTo-Json
             $response.ContentType = "application/json; charset=utf-8"
             $bytes = [System.Text.Encoding]::UTF8.GetBytes($jsonString)
             $response.ContentLength64 = $bytes.Length
@@ -403,31 +515,59 @@ try {
                 } catch {}
             }
 
-            # Strict candidate deduplication by email: update existing if already registered
-            $existingIndex = -1
-            for ($i = 0; $i -lt $allStudents.Count; $i++) {
-                if ($allStudents[$i].email -and ($allStudents[$i].email.ToString().Trim().ToLower() -eq $email)) {
-                    $existingIndex = $i
+            # 1. Strict Duplicate Check: Email
+            $existingEmailSt = $null
+            foreach ($st in $allStudents) {
+                if ($st.email -and ($st.email.ToString().Trim().ToLower() -eq $email.ToLower())) {
+                    $existingEmailSt = $st
                     break
                 }
             }
-
-            if ($existingIndex -ne -1) {
-                $existingSt = $allStudents[$existingIndex]
-                $studentObj.id = $existingSt.id
-                $studentObj.registrationId = if ($existingSt.registrationId) { $existingSt.registrationId } else { $regId }
-                $regId = $studentObj.registrationId
-                if ($existingSt.status -eq "Completed" -or $existingSt.assessment) {
-                    $studentObj.status = $existingSt.status
-                    $studentObj.testStatus = $existingSt.testStatus
-                    $studentObj.assessment = $existingSt.assessment
-                    $studentObj.testScore = $existingSt.testScore
-                    $studentObj.totalScore = $existingSt.totalScore
+            if ($existingEmailSt) {
+                $respObj = @{
+                    success = $false
+                    error = "Duplicate Registration Blocked: An account with email address ($email) is already registered under Registration ID $($existingEmailSt.registrationId). Duplicate registrations are strictly forbidden. Please sign in directly."
                 }
-                $allStudents[$existingIndex] = $studentObj
-            } else {
-                [void]$allStudents.Add($studentObj)
+                $respJson = $respObj | ConvertTo-Json
+                $response.ContentType = "application/json; charset=utf-8"
+                $response.StatusCode = 409
+                $bytes = [System.Text.Encoding]::UTF8.GetBytes($respJson)
+                $response.ContentLength64 = $bytes.Length
+                $response.OutputStream.Write($bytes, 0, $bytes.Length)
+                $response.Close()
+                continue
             }
+
+            # 2. Strict Duplicate Check: Mobile / Phone Number
+            $cleanMobile = if ($payload.mobile) { ($payload.mobile.ToString() -replace '\D', '') } else { "" }
+            $existingMobileSt = $null
+            if ($cleanMobile) {
+                foreach ($st in $allStudents) {
+                    if ($st.mobile) {
+                        $stClean = ($st.mobile.ToString() -replace '\D', '')
+                        if ($stClean -and ($stClean -eq $cleanMobile -or ($stClean.Length -ge 10 -and $cleanMobile.Length -ge 10 -and $stClean.Substring($stClean.Length - 10) -eq $cleanMobile.Substring($cleanMobile.Length - 10)))) {
+                            $existingMobileSt = $st
+                            break
+                        }
+                    }
+                }
+            }
+            if ($existingMobileSt) {
+                $respObj = @{
+                    success = $false
+                    error = "Duplicate Registration Blocked: The mobile number ($($payload.mobile)) is already registered to candidate '$($existingMobileSt.name)' ($($existingMobileSt.registrationId)). Phone numbers must be unique across all applicants."
+                }
+                $respJson = $respObj | ConvertTo-Json
+                $response.ContentType = "application/json; charset=utf-8"
+                $response.StatusCode = 409
+                $bytes = [System.Text.Encoding]::UTF8.GetBytes($respJson)
+                $response.ContentLength64 = $bytes.Length
+                $response.OutputStream.Write($bytes, 0, $bytes.Length)
+                $response.Close()
+                continue
+            }
+
+            [void]$allStudents.Add($studentObj)
 
             try {
                 $allStudents | ConvertTo-Json -Depth 5 | Set-Content -Path $studentsStorePath -Encoding UTF8
@@ -759,24 +899,31 @@ try {
             } elseif ($action -eq "rankings") {
                 $rankList = @()
                 $rankIndex = 1
-                $completedSorted = @($items | Where-Object { $_.status -eq "Completed" -or $_.assessment -or $_.testScore } | Sort-Object -Descending -Property {
+                $completedSorted = @($items | Where-Object { 
+                    ($_.status -eq "Completed" -or $_.testStatus -eq "Completed" -or $_.assessment) -and 
+                    (($_.assessment -and $_.assessment.total_score -ne $null) -or ($_.testScore -and $_.testScore.totalScore -ne $null) -or ($_.totalScore -ne $null))
+                } | Sort-Object -Descending -Property {
                     if ($_.assessment -and $_.assessment.total_score -ne $null) { [int]$_.assessment.total_score }
                     elseif ($_.testScore -and $_.testScore.totalScore -ne $null) { [int]$_.testScore.totalScore }
                     elseif ($_.totalScore -ne $null) { [int]$_.totalScore }
                     else { 0 }
                 })
-                $totalCandCount = [math]::Max(1, $completedSorted.Length)
+                $totalCandCount = $completedSorted.Length
                 foreach ($st in $completedSorted) {
-                    $s1 = if ($st.assessment -and $st.assessment.section_1_score -ne $null) { [int]$st.assessment.section_1_score } else { [math]::Max(28, 38 - ($rankIndex * 2)) }
-                    $s2 = if ($st.assessment -and $st.assessment.section_2_score -ne $null) { [int]$st.assessment.section_2_score } else { [math]::Max(14, 19 - ($rankIndex % 3)) }
-                    $s3 = if ($st.assessment -and $st.assessment.section_3_score -ne $null) { [int]$st.assessment.section_3_score } else { [math]::Max(20, 36 - ($rankIndex * 3)) }
-                    $sc = if ($st.assessment -and $st.assessment.total_score -ne $null) { [int]$st.assessment.total_score } else { ($s1 + $s2 + $s3) }
+                    $s1 = if ($st.assessment -and $st.assessment.section_1_score -ne $null) { [int]$st.assessment.section_1_score } else { 0 }
+                    $s2 = if ($st.assessment -and $st.assessment.section_2_score -ne $null) { [int]$st.assessment.section_2_score } else { 0 }
+                    $s3 = if ($st.assessment -and $st.assessment.section_3_score -ne $null) { [int]$st.assessment.section_3_score } else { 0 }
+                    $sc = if ($st.assessment -and $st.assessment.total_score -ne $null) { [int]$st.assessment.total_score }
+                          elseif ($st.testScore -and $st.testScore.totalScore -ne $null) { [int]$st.testScore.totalScore }
+                          elseif ($st.totalScore -ne $null) { [int]$st.totalScore }
+                          else { ($s1 + $s2 + $s3) }
                     $pct = if ($totalCandCount -gt 1) { [math]::Round(((($totalCandCount - $rankIndex) / ($totalCandCount - 1)) * 100), 1) } else { 100.0 }
                     $regId = if ($st.registrationId) { $st.registrationId } else { "COG-2026-" + $st.id }
                     $candName = if ($st.name) { $st.name } else { "Candidate" }
                     $courseName = if ($st.course) { $st.course } else { "B.Tech" }
                     $streamName = if ($st.stream) { $st.stream } else { "Computer Science and Engineering" }
                     $resultStatus = if ($sc -ge 60) { "Shortlisted" } elseif ($sc -ge 40) { "Qualified" } else { "Rejected" }
+                    $subTime = if ($st.assessment -and $st.assessment.submitted_at) { $st.assessment.submitted_at } elseif ($st.submittedAt) { $st.submittedAt } else { "Recent" }
 
                     $rankList += @{
                         rank = $rankIndex++
@@ -787,7 +934,7 @@ try {
                         registration_id = $regId
                         student_email = $st.email
                         email = $st.email
-                        college = $st.college
+                        college = if ($st.college) { $st.college } else { "Engineering College" }
                         course = $courseName
                         stream = $streamName
                         sec1Score = $s1
@@ -803,13 +950,30 @@ try {
                         violations = 0
                         status = $resultStatus
                         result_status = $resultStatus
-                        submittedAt = if ($st.assessment -and $st.assessment.submitted_at) { $st.assessment.submitted_at } elseif ($st.submittedAt) { $st.submittedAt } else { "2026-11-18 11:34:16" }
-                        submitted_at = if ($st.assessment -and $st.assessment.submitted_at) { $st.assessment.submitted_at } elseif ($st.submittedAt) { $st.submittedAt } else { "2026-11-18 11:34:16" }
+                        submittedAt = $subTime
+                        submitted_at = $subTime
                     }
                 }
                 $respObj = @{
                     success = $true
                     rankings = $rankList
+                    totalAssessed = $totalCandCount
+                }
+            } elseif ($action -eq "clear_all_students" -or $action -eq "purge_data") {
+                $studentsStorePath = Join-Path $baseDir "registered_students.json"
+                @() | ConvertTo-Json | Set-Content -Path $studentsStorePath -Encoding UTF8
+                $global:activeOtps = @{}
+                $global:verifiedEmails = @{}
+
+                if ($useHostingerDb) {
+                    try {
+                        $null = Invoke-RestMethod -Uri "https://contest.cognitoinsights.tech/admin-api.php?action=clear_all_students" -Method Get -TimeoutSec 5
+                    } catch {}
+                }
+
+                $respObj = @{
+                    success = $true
+                    message = "All test candidate records, submissions, and scores have been completely purged! Platform is 100% clean for fresh user registration."
                 }
             } elseif ($action -eq "answer_sheets") {
                 # Check for override_marks subaction

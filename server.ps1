@@ -50,6 +50,70 @@ function Forward-ToHostinger {
 
         $webRes = Invoke-WebRequest @webParams
         $content = $webRes.Content
+
+        if ($req.Url.PathAndQuery.Contains("action=rankings")) {
+            try {
+                $rankData = $content | ConvertFrom-Json
+                if ($rankData.success -and $rankData.rankings) {
+                    $seen = @{}
+                    $uniqueRankings = @()
+                    foreach ($r in $rankData.rankings) {
+                        $key = if ($r.studentId) { $r.studentId } else { $r.registrationId }
+                        if (-not $seen.ContainsKey($key)) {
+                            $seen[$key] = $true
+                            $uniqueRankings += $r
+                        }
+                    }
+                    $tot = $uniqueRankings.Count
+                    for ($i = 0; $i -lt $tot; $i++) {
+                        $uniqueRankings[$i].rank = $i + 1
+                        $uniqueRankings[$i].percentile = if ($tot -gt 1) { [Math]::Round((($tot - ($i + 1)) / ($tot - 1)) * 100, 1) } else { 100.0 }
+                    }
+                    $rankData.rankings = $uniqueRankings
+                    $rankData.totalAssessed = $tot
+                    $content = $rankData | ConvertTo-Json -Depth 6
+                }
+            } catch {}
+        }
+
+        if ($req.Url.PathAndQuery.Contains("action=answer_sheets")) {
+            try {
+                $sheetData = $content | ConvertFrom-Json
+                if ($sheetData.success -and $sheetData.answerSheets) {
+                    $seen = @{}
+                    $uniqueSheets = @()
+                    foreach ($sh in $sheetData.answerSheets) {
+                        $key = if ($sh.student_id) { $sh.student_id } else { $sh.registration_id }
+                        if (-not $seen.ContainsKey($key)) {
+                            $seen[$key] = $true
+                            $uniqueSheets += $sh
+                        }
+                    }
+                    $sheetData.answerSheets = $uniqueSheets
+                    $content = $sheetData | ConvertTo-Json -Depth 6
+                }
+            } catch {}
+        }
+
+        if ($req.Url.PathAndQuery.Contains("action=candidates")) {
+            try {
+                $candData = $content | ConvertFrom-Json
+                if ($candData.success -and $candData.candidates) {
+                    $seen = @{}
+                    $uniqueCands = @()
+                    foreach ($c in $candData.candidates) {
+                        $key = if ($c.id) { $c.id } else { $c.registrationId }
+                        if (-not $seen.ContainsKey($key)) {
+                            $seen[$key] = $true
+                            $uniqueCands += $c
+                        }
+                    }
+                    $candData.candidates = $uniqueCands
+                    $content = $candData | ConvertTo-Json -Depth 6
+                }
+            } catch {}
+        }
+
         $bytes = [System.Text.Encoding]::UTF8.GetBytes($content)
 
         $resp.StatusCode = [int]$webRes.StatusCode

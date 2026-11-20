@@ -1642,24 +1642,37 @@ class AdminManager {
           college: c.college,
           course: c.course || "B.Tech",
           stream: c.stream || "CSE",
-          section_1_score: c.assessment?.section_1_score ?? c.assessment?.section1Score ?? 36,
-          section_2_score: c.assessment?.section_2_score ?? c.assessment?.section2Score ?? 18,
-          section_3_score: c.assessment?.section_3_score ?? c.assessment?.section3Score ?? 30,
-          total_score: c.assessment?.total_score ?? c.assessment?.totalScore ?? 84,
-          percentage: c.assessment?.total_score ?? c.assessment?.totalScore ?? 84,
-          coding_q1_score: c.assessment?.coding_q1_score ?? 20,
-          coding_q1_cases_passed: c.assessment?.coding_q1_cases_passed ?? 10,
+          section_1_score: c.assessment?.section_1_score ?? c.assessment?.section1Score ?? 0,
+          section_2_score: c.assessment?.section_2_score ?? c.assessment?.section2Score ?? 0,
+          section_3_score: c.assessment?.section_3_score ?? c.assessment?.section3Score ?? 0,
+          total_score: c.assessment?.total_score ?? c.assessment?.totalScore ?? 0,
+          percentage: c.assessment?.percentage ?? 0,
+          coding_q1_score: c.assessment?.coding_q1_score ?? 0,
+          coding_q1_cases_passed: c.assessment?.coding_q1_cases_passed ?? 0,
           coding_q1_lang: c.assessment?.coding_q1_lang ?? "python",
           coding_q1_code: c.assessment?.coding_q1_code ?? "",
-          coding_q2_score: c.assessment?.coding_q2_score ?? 10,
-          coding_q2_cases_passed: c.assessment?.coding_q2_cases_passed ?? 5,
+          coding_q2_score: c.assessment?.coding_q2_score ?? 0,
+          coding_q2_cases_passed: c.assessment?.coding_q2_cases_passed ?? 0,
           coding_q2_lang: c.assessment?.coding_q2_lang ?? "python",
           coding_q2_code: c.assessment?.coding_q2_code ?? "",
           answers: c.assessment?.answers ?? null,
+          answers_json: c.assessment?.answers_json ?? null,
           proctoring_violations: c.assessment?.violations ?? 0,
-          submitted_at: c.assessment?.submitted_at ?? "2026-11-17 13:06:15"
+          submitted_at: c.assessment?.submitted_at ?? "Recent"
         }));
     }
+
+    // Client-side strict deduplication by student ID
+    const seenSid = new Set();
+    const dedupedSheets = [];
+    for (const sh of sheets) {
+      const sid = sh.student_id || sh.id;
+      if (!seenSid.has(sid)) {
+        seenSid.add(sid);
+        dedupedSheets.push(sh);
+      }
+    }
+    sheets = dedupedSheets;
 
     this.answerSheets = sheets;
 
@@ -1774,10 +1787,22 @@ class AdminManager {
     const sStream = sheet.stream || "CSE";
     const sDate = sheet.submitted_at || sheet.assessment?.submitted_at || "2026-11-17 13:06:15";
 
-    const tot = sheet.total_score ?? sheet.assessment?.total_score ?? 84;
-    const s1 = sheet.section_1_score ?? sheet.assessment?.section_1_score ?? 36;
-    const s2 = sheet.section_2_score ?? sheet.assessment?.section_2_score ?? 18;
-    const s3 = sheet.section_3_score ?? sheet.assessment?.section_3_score ?? 30;
+    const tot = sheet.total_score ?? sheet.assessment?.total_score ?? 0;
+    const s1 = sheet.section_1_score ?? sheet.assessment?.section_1_score ?? 0;
+    const s2 = sheet.section_2_score ?? sheet.assessment?.section_2_score ?? 0;
+    const s3 = sheet.section_3_score ?? sheet.assessment?.section_3_score ?? 0;
+
+    let answersObj = sheet.answers || sheet.assessment?.answers || {};
+    if (typeof answersObj === 'string') {
+      try { answersObj = JSON.parse(answersObj); } catch(e) { answersObj = {}; }
+    }
+    if (!answersObj || Object.keys(answersObj).length === 0) {
+      const jsonStr = sheet.answers_json || sheet.assessment?.answers_json;
+      if (jsonStr) {
+        try { answersObj = JSON.parse(jsonStr); } catch(e) { answersObj = {}; }
+      }
+    }
+    sheet.answers = answersObj;
 
     const nameEl = document.getElementById("ans-modal-cand-name");
     if (nameEl) nameEl.textContent = sName;
@@ -1846,15 +1871,29 @@ class AdminManager {
     const sh = this.activeAnswerSheet;
 
     if (tabKey === "coding") {
-      const q1Lang = sh.coding_q1_lang || sh.assessment?.coding_q1_lang || "python";
-      const q1Cases = sh.coding_q1_cases_passed ?? sh.assessment?.coding_q1_cases_passed ?? 10;
-      const q1Score = sh.coding_q1_score ?? sh.assessment?.coding_q1_score ?? 20;
-      const q1Code = sh.coding_q1_code || sh.assessment?.coding_q1_code || `def lengthOfLongestSubstring(s: str) -> int:\n    char_map = {}\n    max_len = 0\n    start = 0\n    for end, char in enumerate(s):\n        if char in char_map and char_map[char] >= start:\n            start = char_map[char] + 1\n        char_map[char] = end\n        max_len = max(max_len, end - start + 1)\n    return max_len`;
+      let answersObj = sh.answers || sh.assessment?.answers || {};
+      if (typeof answersObj === 'string') {
+        try { answersObj = JSON.parse(answersObj); } catch(e) { answersObj = {}; }
+      }
+      if (!answersObj || Object.keys(answersObj).length === 0) {
+        const jsonStr = sh.answers_json || sh.assessment?.answers_json;
+        if (jsonStr) {
+          try { answersObj = JSON.parse(jsonStr); } catch(e) { answersObj = {}; }
+        }
+      }
 
-      const q2Lang = sh.coding_q2_lang || sh.assessment?.coding_q2_lang || "python";
-      const q2Cases = sh.coding_q2_cases_passed ?? sh.assessment?.coding_q2_cases_passed ?? 5;
-      const q2Score = sh.coding_q2_score ?? sh.assessment?.coding_q2_score ?? 10;
-      const q2Code = sh.coding_q2_code || sh.assessment?.coding_q2_code || `def twoSum(nums: list, target: int) -> list:\n    # Brute-force pairwise search\n    for i in range(len(nums)):\n        for j in range(i + 1, len(nums)):\n            if nums[i] + nums[j] == target:\n                return [i, j]\n    return []`;
+      const q1AnsObj = answersObj.section3?.['code-1'] || {};
+      const q2AnsObj = answersObj.section3?.['code-2'] || {};
+
+      const q1Code = sh.coding_q1_code || sh.assessment?.coding_q1_code || q1AnsObj.code || "# No code submitted by candidate.";
+      const q1Score = Number(sh.coding_q1_score ?? sh.assessment?.coding_q1_score ?? q1AnsObj.score ?? 0);
+      const q1Cases = sh.coding_q1_cases_passed ?? sh.assessment?.coding_q1_cases_passed ?? q1AnsObj.passedCount ?? (q1Score >= 20 ? 4 : Math.round((q1Score / 20) * 4));
+      const q1Lang = sh.coding_q1_lang || sh.assessment?.coding_q1_lang || q1AnsObj.language || "python";
+
+      const q2Code = sh.coding_q2_code || sh.assessment?.coding_q2_code || q2AnsObj.code || "# No code submitted by candidate.";
+      const q2Score = Number(sh.coding_q2_score ?? sh.assessment?.coding_q2_score ?? q2AnsObj.score ?? 0);
+      const q2Cases = sh.coding_q2_cases_passed ?? sh.assessment?.coding_q2_cases_passed ?? q2AnsObj.passedCount ?? (q2Score >= 20 ? 4 : Math.round((q2Score / 20) * 4));
+      const q2Lang = sh.coding_q2_lang || sh.assessment?.coding_q2_lang || q2AnsObj.language || "python";
 
       const ref1 = (window.EXAM_DATA?.section3_coding?.[0]?.referenceSolutions?.python) || "def lengthOfLongestSubstring(s: str) -> int:\n    char_index = {}\n    max_len = 0\n    start = 0\n    for end, char in enumerate(s):\n        if char in char_index and char_index[char] >= start:\n            start = char_index[char] + 1\n        char_index[char] = end\n        max_len = max(max_len, end - start + 1)\n    return max_len";
       const ref2 = (window.EXAM_DATA?.section3_coding?.[1]?.referenceSolutions?.python) || "def twoSum(nums: list, target: int) -> list:\n    lookup = {}\n    for i, num in enumerate(nums):\n        complement = target - num\n        if complement in lookup:\n            return [lookup[complement], i]\n        lookup[num] = i\n    return []";
@@ -1942,7 +1981,16 @@ class AdminManager {
         </div>
       `;
     } else if (tabKey === "mcq") {
-      const answersObj = sh.answers || sh.assessment?.answers || {};
+      let answersObj = sh.answers || sh.assessment?.answers || {};
+      if (typeof answersObj === 'string') {
+        try { answersObj = JSON.parse(answersObj); } catch(e) { answersObj = {}; }
+      }
+      if (!answersObj || Object.keys(answersObj).length === 0) {
+        const jsonStr = sh.answers_json || sh.assessment?.answers_json;
+        if (jsonStr) {
+          try { answersObj = JSON.parse(jsonStr); } catch(e) { answersObj = {}; }
+        }
+      }
       const s1Ans = answersObj.section1 || {};
       const s2Ans = answersObj.section2 || {};
 
@@ -2184,6 +2232,23 @@ class AdminManager {
         };
       });
     }
+
+    // Guarantee 100% unique candidates in Live Rankings
+    const seenRankStudent = new Set();
+    const dedupedRankings = [];
+    for (const r of (rankings || [])) {
+      const uid = String(r.student_id || r.studentId || r.registrationId || r.name || '').toLowerCase();
+      if (!seenRankStudent.has(uid)) {
+        seenRankStudent.add(uid);
+        dedupedRankings.push(r);
+      }
+    }
+    const finalTotal = dedupedRankings.length;
+    dedupedRankings.forEach((r, idx) => {
+      r.rank = idx + 1;
+      r.percentile = finalTotal > 1 ? Math.round((((finalTotal - r.rank) / (finalTotal - 1)) * 100) * 10) / 10 : 100.0;
+    });
+    rankings = dedupedRankings;
 
     container.innerHTML = `
       <div class="space-y-6">
