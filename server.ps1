@@ -114,6 +114,58 @@ function Forward-ToHostinger {
             } catch {}
         }
 
+        # Candidate Single-Device Session Locking & Exam Restriction Enforcement
+        if ($req.Url.LocalPath -eq "/auth.php" -and $req.HttpMethod -eq "POST") {
+            try {
+                $postData = if ($body) { $body | ConvertFrom-Json } else { $null }
+                if ($postData -and ($postData.action -eq "logout" -or $req.Url.PathAndQuery.Contains("action=logout"))) {
+                    $logoutEmail = if ($postData.email) { $postData.email.ToString().Trim().ToLower() } else { "" }
+                    if ($logoutEmail -and $global:activeSessions) {
+                        $global:activeSessions.Remove($logoutEmail)
+                    }
+                } elseif ($postData -and $postData.email -and $postData.password) {
+                    $loginEmail = $postData.email.ToString().Trim().ToLower()
+                    $devId = if ($postData.deviceId) { $postData.deviceId.ToString().Trim() } else { "" }
+                    
+                    if (-not $global:activeSessions) { $global:activeSessions = @{} }
+                    
+                    $authResp = $content | ConvertFrom-Json
+                    if ($authResp.success -and $authResp.role -eq "student") {
+                        $stStatus = if ($authResp.user.status) { $authResp.user.status } else { "" }
+                        $hasAss = $authResp.user.assessment
+                        if ($stStatus -eq "Completed" -or ($hasAss -and $hasAss.submitted_at)) {
+                            $subDate = if ($hasAss -and $hasAss.submitted_at) { $hasAss.submitted_at } else { "previously" }
+                            $blockResp = @{
+                                success = $false
+                                errorType = "EXAM_ALREADY_TAKEN"
+                                error = "Exam Already Taken: Your examination was already submitted on $subDate. Candidate accounts cannot re-take or re-enter the examination once submitted."
+                                submittedAt = $subDate
+                            }
+                            $content = $blockResp | ConvertTo-Json
+                        } elseif ($global:activeSessions.ContainsKey($loginEmail)) {
+                            $activeDev = $global:activeSessions[$loginEmail]
+                            if ($devId -and $activeDev -ne $devId) {
+                                # Concurrent login from second PC blocked!
+                                $blockResp = @{
+                                    success = $false
+                                    errorType = "CONCURRENT_LOGIN_BLOCKED"
+                                    error = "Exam Access Restricted: This candidate account is already logged in and active on another computer. To prevent impersonation and maintain assessment integrity, access is granted strictly to the first logged-in computer only."
+                                    activeDevice = $true
+                                }
+                                $content = $blockResp | ConvertTo-Json
+                            } else {
+                                $global:activeSessions[$loginEmail] = $devId
+                            }
+                        } else {
+                            if ($devId) {
+                                $global:activeSessions[$loginEmail] = $devId
+                            }
+                        }
+                    }
+                }
+            } catch {}
+        }
+
         $bytes = [System.Text.Encoding]::UTF8.GetBytes($content)
 
         $resp.StatusCode = [int]$webRes.StatusCode
