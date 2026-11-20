@@ -1064,12 +1064,13 @@ try {
                     $sheetList = @()
                     $completedList = @($items | Where-Object { $_.status -eq "Completed" -or $_.assessment })
                     foreach ($st in $completedList) {
-                        $sc = if ($st.assessment -and $st.assessment.total_score -ne $null) { [int]$st.assessment.total_score } else { 84 }
-                        $s1 = if ($st.assessment -and $st.assessment.section_1_score -ne $null) { [int]$st.assessment.section_1_score } else { 36 }
-                        $s2 = if ($st.assessment -and $st.assessment.section_2_score -ne $null) { [int]$st.assessment.section_2_score } else { 18 }
-                        $s3 = if ($st.assessment -and $st.assessment.section_3_score -ne $null) { [int]$st.assessment.section_3_score } else { 30 }
-                        $q1Code = if ($st.assessment -and $st.assessment.coding_q1_code) { $st.assessment.coding_q1_code } else { "def lengthOfLongestSubstring(s: str) -> int:`n    char_map = {}`n    max_len = 0`n    start = 0`n    for end, char in enumerate(s):`n        if char in char_map and char_map[char] >= start:`n            start = char_map[char] + 1`n        char_map[char] = end`n        max_len = max(max_len, end - start + 1)`n    return max_len" }
-                        $q2Code = if ($st.assessment -and $st.assessment.coding_q2_code) { $st.assessment.coding_q2_code } else { "def twoSum(nums: list, target: int) -> list:`n    for i in range(len(nums)):`n        for j in range(i + 1, len(nums)):`n            if nums[i] + nums[j] == target:`n                return [i, j]`n    return []" }
+                        $sc = if ($st.assessment -and $st.assessment.total_score -ne $null) { [int]$st.assessment.total_score } else { 0 }
+                        $s1 = if ($st.assessment -and $st.assessment.section_1_score -ne $null) { [int]$st.assessment.section_1_score } else { 0 }
+                        $s2 = if ($st.assessment -and $st.assessment.section_2_score -ne $null) { [int]$st.assessment.section_2_score } else { 0 }
+                        $s3 = if ($st.assessment -and $st.assessment.section_3_score -ne $null) { [int]$st.assessment.section_3_score } else { 0 }
+                        $q1Code = if ($st.assessment -and $st.assessment.coding_q1_code) { $st.assessment.coding_q1_code } else { "" }
+                        $q2Code = if ($st.assessment -and $st.assessment.coding_q2_code) { $st.assessment.coding_q2_code } else { "" }
+                        $assType = if ($st.assessment -and $st.assessment.assessment_type) { $st.assessment.assessment_type } elseif ($st.officeAssessment) { "aarks" } else { "qis" }
                         
                         $sheetList += @{
                             id = $st.id
@@ -1082,26 +1083,27 @@ try {
                             college = $st.college
                             stream = if ($st.stream) { $st.stream } else { "CSE" }
                             course = if ($st.course) { $st.course } else { "B.Tech" }
+                            assessment_type = $assType
                             section_1_score = $s1
                             section_2_score = $s2
                             section_3_score = $s3
                             total_score = $sc
                             percentage = $sc
-                            coding_q1_score = if ($st.assessment -and $st.assessment.coding_q1_score -ne $null) { [int]$st.assessment.coding_q1_score } else { 20 }
-                            coding_q1_cases_passed = if ($st.assessment -and $st.assessment.coding_q1_cases_passed -ne $null) { [int]$st.assessment.coding_q1_cases_passed } else { 4 }
-                            coding_q1_executed = if ($st.assessment -and $st.assessment.coding_q1_executed -ne $null) { [bool]$st.assessment.coding_q1_executed } else { $true }
+                            coding_q1_score = if ($st.assessment -and $st.assessment.coding_q1_score -ne $null) { [int]$st.assessment.coding_q1_score } else { 0 }
+                            coding_q1_cases_passed = if ($st.assessment -and $st.assessment.coding_q1_cases_passed -ne $null) { [int]$st.assessment.coding_q1_cases_passed } else { 0 }
+                            coding_q1_executed = if ($st.assessment -and $st.assessment.coding_q1_executed -ne $null) { [bool]$st.assessment.coding_q1_executed } else { $false }
                             coding_q1_lang = if ($st.assessment -and $st.assessment.coding_q1_lang) { $st.assessment.coding_q1_lang } else { "python" }
                             coding_q1_code = $q1Code
-                            coding_q2_score = if ($st.assessment -and $st.assessment.coding_q2_score -ne $null) { [int]$st.assessment.coding_q2_score } else { 20 }
-                            coding_q2_cases_passed = if ($st.assessment -and $st.assessment.coding_q2_cases_passed -ne $null) { [int]$st.assessment.coding_q2_cases_passed } else { 4 }
-                            coding_q2_executed = if ($st.assessment -and $st.assessment.coding_q2_executed -ne $null) { [bool]$st.assessment.coding_q2_executed } else { $true }
-                            coding_problems_executed = if ($st.assessment -and $st.assessment.coding_problems_executed -ne $null) { [int]$st.assessment.coding_problems_executed } else { 2 }
+                            coding_q2_score = if ($st.assessment -and $st.assessment.coding_q2_score -ne $null) { [int]$st.assessment.coding_q2_score } else { 0 }
+                            coding_q2_cases_passed = if ($st.assessment -and $st.assessment.coding_q2_cases_passed -ne $null) { [int]$st.assessment.coding_q2_cases_passed } else { 0 }
+                            coding_q2_executed = if ($st.assessment -and $st.assessment.coding_q2_executed -ne $null) { [bool]$st.assessment.coding_q2_executed } else { $false }
+                            coding_problems_executed = if ($st.assessment -and $st.assessment.coding_problems_executed -ne $null) { [int]$st.assessment.coding_problems_executed } else { 0 }
                             coding_q2_lang = if ($st.assessment -and $st.assessment.coding_q2_lang) { $st.assessment.coding_q2_lang } else { "python" }
                             coding_q2_code = $q2Code
                             answers = if ($st.assessment -and $st.assessment.answers) { $st.assessment.answers } else { $null }
                             proctoring_violations = if ($st.assessment -and $st.assessment.violations -ne $null) { [int]$st.assessment.violations } else { 0 }
                             recruiter_status = if ($sc -ge 60) { "Qualified" } else { "Under Review" }
-                            submitted_at = if ($st.assessment -and $st.assessment.submitted_at) { $st.assessment.submitted_at } else { "2026-11-17 13:06:15" }
+                            submitted_at = if ($st.assessment -and $st.assessment.submitted_at) { $st.assessment.submitted_at } else { "Recent" }
                         }
                     }
                     $respObj = @{

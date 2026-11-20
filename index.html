@@ -2516,9 +2516,9 @@ Candidate Name</textarea>
           </div>
 
           <div class="p-2 space-y-1" id="admin-sidebar-modules-list">
-            <!-- Core Candidate & Assessment Suite -->
+            <!-- Core Candidate Management -->
             <div class="admin-nav-group-title">
-              <span>Recruitment Command</span>
+              <span>Candidate Roster</span>
               <span class="text-[9px] text-slate-500 font-semibold">Core</span>
             </div>
 
@@ -2538,18 +2538,46 @@ Candidate Name</textarea>
               <span class="text-[9px] text-blue-700 font-bold bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-full">Roster</span>
             </div>
 
-            <div class="admin-nav-link" data-module-key="rankings" onclick="window.adminManager.switchModule('rankings')">
-              <div class="flex items-center gap-2.5 truncate">
-                <i class="fas fa-trophy text-amber-500"></i>
-                <span class="truncate font-bold">Merit Rankings & Results</span>
-              </div>
-              <span class="text-[9px] text-amber-700 font-bold bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">Merit</span>
+            <!-- Assessment 1: QIS Technical & Coding Track -->
+            <div class="admin-nav-group-title mt-3 flex items-center justify-between">
+              <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-blue-600"></span>Assessment 1 &bull; QIS Tech</span>
+              <span class="text-[9px] text-blue-700 font-extrabold bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded">100M</span>
             </div>
 
-            <div class="admin-nav-link" data-module-key="answers" onclick="window.adminManager.switchModule('answers')">
+            <div class="admin-nav-link" data-module-key="qis-rankings" onclick="window.adminManager.switchModule('qis-rankings')">
               <div class="flex items-center gap-2.5 truncate">
-                <i class="fas fa-file-code text-emerald-600"></i>
-                <span class="truncate font-bold">Answer Sheets & Code</span>
+                <i class="fas fa-trophy text-amber-500"></i>
+                <span class="truncate font-bold">QIS Merit Rankings</span>
+              </div>
+              <span class="text-[9px] text-amber-700 font-bold bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">Leaderboard</span>
+            </div>
+
+            <div class="admin-nav-link" data-module-key="qis-answers" onclick="window.adminManager.switchModule('qis-answers')">
+              <div class="flex items-center gap-2.5 truncate">
+                <i class="fas fa-file-code text-indigo-600"></i>
+                <span class="truncate font-bold">QIS Answer Sheets & Code</span>
+              </div>
+              <span class="text-[9px] text-indigo-700 font-bold bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-full">Review</span>
+            </div>
+
+            <!-- Assessment 2: AARKS Office Productivity Track -->
+            <div class="admin-nav-group-title mt-3 flex items-center justify-between">
+              <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-amber-500"></span>Assessment 2 &bull; AARKS Office</span>
+              <span class="text-[9px] text-amber-700 font-extrabold bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded">100M</span>
+            </div>
+
+            <div class="admin-nav-link" data-module-key="aarks-rankings" onclick="window.adminManager.switchModule('aarks-rankings')">
+              <div class="flex items-center gap-2.5 truncate">
+                <i class="fas fa-medal text-emerald-600"></i>
+                <span class="truncate font-bold">AARKS Merit Rankings</span>
+              </div>
+              <span class="text-[9px] text-emerald-700 font-bold bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">Leaderboard</span>
+            </div>
+
+            <div class="admin-nav-link" data-module-key="aarks-answers" onclick="window.adminManager.switchModule('aarks-answers')">
+              <div class="flex items-center gap-2.5 truncate">
+                <i class="fas fa-file-alt text-emerald-600"></i>
+                <span class="truncate font-bold">AARKS Answer Sheets & Tasks</span>
               </div>
               <span class="text-[9px] text-emerald-700 font-bold bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">Review</span>
             </div>
