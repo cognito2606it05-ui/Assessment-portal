@@ -133,26 +133,18 @@ function Forward-ToHostinger {
                     if ($authResp.success -and $authResp.role -eq "student") {
                         $stStatus = if ($authResp.user.status) { $authResp.user.status } else { "" }
                         $hasAss = $authResp.user.assessment
-                        if ($stStatus -eq "Completed" -or ($hasAss -and $hasAss.submitted_at)) {
-                            $subDate = if ($hasAss -and $hasAss.submitted_at) { $hasAss.submitted_at } else { "previously" }
-                            $blockResp = @{
-                                success = $false
-                                errorType = "EXAM_ALREADY_TAKEN"
-                                error = "Exam Already Taken: Your examination was already submitted on $subDate. Candidate accounts cannot re-take or re-enter the examination once submitted."
-                                submittedAt = $subDate
-                            }
-                            $content = $blockResp | ConvertTo-Json
-                        } elseif ($global:activeSessions.ContainsKey($loginEmail)) {
+                        $isCompleted = ($stStatus -eq "Completed" -or ($hasAss -and $hasAss.submitted_at))
+                        $subDate = if ($hasAss -and $hasAss.submitted_at) { $hasAss.submitted_at } else { $null }
+
+                        $authResp.user | Add-Member -NotePropertyName "examCompleted" -NotePropertyValue $isCompleted -Force
+                        $authResp.user | Add-Member -NotePropertyName "submittedAt" -NotePropertyValue $subDate -Force
+
+                        if ($global:activeSessions.ContainsKey($loginEmail)) {
                             $activeDev = $global:activeSessions[$loginEmail]
                             if ($devId -and $activeDev -ne $devId) {
-                                # Concurrent login from second PC blocked!
-                                $blockResp = @{
-                                    success = $false
-                                    errorType = "CONCURRENT_LOGIN_BLOCKED"
-                                    error = "Exam Access Restricted: This candidate account is already logged in and active on another computer. To prevent impersonation and maintain assessment integrity, access is granted strictly to the first logged-in computer only."
-                                    activeDevice = $true
-                                }
-                                $content = $blockResp | ConvertTo-Json
+                                # Secondary PC detected: allow sign-in to view status, but flag concurrent session
+                                $authResp.user | Add-Member -NotePropertyName "isConcurrentSession" -NotePropertyValue $true -Force
+                                $authResp.user | Add-Member -NotePropertyName "concurrentWarning" -NotePropertyValue "Active Session Detected: Another computer is already active with this account. Examination policy allows test submission strictly from your primary computer." -Force
                             } else {
                                 $global:activeSessions[$loginEmail] = $devId
                             }
@@ -161,6 +153,7 @@ function Forward-ToHostinger {
                                 $global:activeSessions[$loginEmail] = $devId
                             }
                         }
+                        $content = $authResp | ConvertTo-Json -Depth 6
                     }
                 }
             } catch {}

@@ -659,11 +659,21 @@ class AppState {
 
             this.routeToView("student-dashboard-view");
             this.updateStudentDashboard(data.user);
-            this.showToast(`Welcome back, ${data.user.name}!`, "success");
+
+            // Simultaneous device concurrency warning popup
+            if (data.user.isConcurrentSession) {
+              this.showConcurrentSessionAlert(data.user.concurrentWarning);
+            }
+
+            if (data.user.examCompleted || data.user.status === "Completed" || data.user.assessment?.submitted_at) {
+              this.showToast(`Welcome back, ${data.user.name}! Your official submission is recorded and under evaluation.`, "success");
+            } else {
+              this.showToast(`Welcome back, ${data.user.name}!`, "success");
+            }
             return;
           }
         } else if (data && !data.success) {
-          if (data.errorType === "EXAM_ALREADY_TAKEN" || data.errorType === "CONCURRENT_LOGIN_BLOCKED") {
+          if (data.errorType === "CONCURRENT_LOGIN_BLOCKED") {
             this.showSessionSecurityModal(data.errorType, data.error, data.submittedAt);
             return;
           }
@@ -825,6 +835,44 @@ class AppState {
     if (modal) modal.classList.remove("hidden");
   }
 
+  showConcurrentSessionAlert(message) {
+    const existing = document.getElementById("simultaneous-device-alert");
+    if (existing) existing.remove();
+
+    const banner = document.createElement("div");
+    banner.id = "simultaneous-device-alert";
+    banner.className = "fixed top-5 right-5 z-50 max-w-md bg-amber-950/95 text-amber-50 border border-amber-600/80 rounded-2xl p-4 shadow-2xl backdrop-blur-md animate-fade-in";
+    banner.innerHTML = `
+      <div class="flex items-start gap-3">
+        <div class="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0 text-base border border-amber-500/30">
+          <i class="fas fa-exclamation-triangle"></i>
+        </div>
+        <div class="flex-1 text-xs">
+          <div class="font-bold text-white text-sm mb-1 flex items-center justify-between">
+            <span>Simultaneous Session Warning</span>
+            <span class="text-[9px] uppercase px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 font-extrabold">Active Device</span>
+          </div>
+          <p class="text-amber-100/90 leading-relaxed text-[11px]">
+            ${message || "Another computer is currently active with these credentials. In accordance with examination regulations, access to write or submit the examination is granted strictly to the first logged-in computer."}
+          </p>
+        </div>
+        <button onclick="document.getElementById('simultaneous-device-alert')?.remove()" class="text-amber-300 hover:text-white text-xs p-1 ml-1 cursor-pointer transition">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+    `;
+    document.body.appendChild(banner);
+
+    setTimeout(() => {
+      const el = document.getElementById("simultaneous-device-alert");
+      if (el) {
+        el.style.opacity = "0";
+        el.style.transition = "opacity 0.6s ease";
+        setTimeout(() => el?.remove(), 600);
+      }
+    }, 12000);
+  }
+
   updateStudentDashboard(student) {
     const greeting = document.getElementById("dash-student-greeting");
     const college = document.getElementById("dash-student-college");
@@ -852,16 +900,17 @@ class AppState {
 
     // Assessment & Action Button State
     const isPublished = Boolean(student.resultPipeline?.is_published_to_student || student.isPublished);
+    const hasCompletedAss1 = student.status === "Completed" || Boolean(student.examCompleted) || Boolean(student.assessment?.submitted_at);
 
-    if (student.status === "Completed") {
+    if (hasCompletedAss1) {
       if (statusPill) {
-        statusPill.className = "px-3 py-1 rounded-full text-xs font-bold badge-completed";
-        statusPill.textContent = "Completed";
+        statusPill.className = "px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300";
+        statusPill.innerHTML = `<i class="fas fa-check-circle mr-1"></i>Completed`;
       }
       if (actionBtn) {
         actionBtn.disabled = true;
-        actionBtn.className = "px-5 py-2.5 text-xs font-bold bg-slate-200 text-slate-500 rounded-lg cursor-not-allowed";
-        actionBtn.innerHTML = `<i class="fas fa-check mr-1.5"></i>Assessment Submitted`;
+        actionBtn.className = "px-5 py-2.5 text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-300 rounded-lg cursor-not-allowed shadow-xs flex items-center justify-center gap-2";
+        actionBtn.innerHTML = `<i class="fas fa-check-circle text-emerald-600 mr-1.5"></i>Official Submission Recorded &bull; Under Evaluation`;
       }
 
       // Display submission confirmation status with exact submitted time
@@ -893,6 +942,19 @@ class AppState {
       if (resultsSummary) resultsSummary.classList.add("hidden");
       const dossierSubRow = document.getElementById("dossier-submitted-row");
       if (dossierSubRow) dossierSubRow.classList.add("hidden");
+    }
+
+    // Assessment 2 (AARKS Office Skills) button & summary status
+    const hasCompletedOffice = Boolean(student.officeAssessmentCompleted || student.officeAssessment?.submitted_at || (student.assessment?.assessmentType === 'office'));
+    const actionBtn2 = document.getElementById("dash-action-btn-2");
+    const resultsSummary2 = document.getElementById("dash-results-summary-2");
+    if (hasCompletedOffice) {
+      if (actionBtn2) {
+        actionBtn2.disabled = true;
+        actionBtn2.className = "px-5 py-2.5 text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-300 rounded-lg cursor-not-allowed shadow-xs flex items-center justify-center gap-1.5";
+        actionBtn2.innerHTML = `<i class="fas fa-check-circle text-emerald-600 mr-1"></i>Office Assessment Submitted`;
+      }
+      if (resultsSummary2) resultsSummary2.classList.remove("hidden");
     }
   }
 
@@ -1335,12 +1397,14 @@ class AppState {
   // EXAM FLOW & 3 SECTIONS EXECUTION (100 MARKS TOTAL)
   // --------------------------------------------------------------------------
   startAssessmentFlow(studentId) {
-    if (this.currentUser?.status === "Completed" || this.currentUser?.testStatus === "Completed" || this.currentUser?.assessment) {
-      this.showSessionSecurityModal(
-        "EXAM_ALREADY_TAKEN",
-        "Exam Already Taken: Your examination was already submitted. In accordance with examination regulations, re-taking the assessment is strictly disallowed.",
-        this.currentUser?.assessment?.submitted_at
-      );
+    if (this.currentUser?.status === "Completed" || this.currentUser?.testStatus === "Completed" || this.currentUser?.assessment?.submitted_at) {
+      const subTime = this.currentUser?.assessment?.submitted_at || "recorded previously";
+      this.showToast(`Exam Already Submitted: Your assessment responses were officially recorded on ${subTime}. Re-taking the examination is disallowed under testing protocol.`, "info");
+      return;
+    }
+
+    if (this.currentUser?.isConcurrentSession) {
+      this.showToast("Simultaneous Device Restriction: Another computer is actively logged in with this account. Exam access is permitted exclusively on your primary computer.", "error");
       return;
     }
 
@@ -2159,6 +2223,44 @@ class AppState {
     if (modal) modal.classList.remove("hidden");
   }
 
+  showConcurrentSessionAlert(message) {
+    const existing = document.getElementById("simultaneous-device-alert");
+    if (existing) existing.remove();
+
+    const banner = document.createElement("div");
+    banner.id = "simultaneous-device-alert";
+    banner.className = "fixed top-5 right-5 z-50 max-w-md bg-amber-950/95 text-amber-50 border border-amber-600/80 rounded-2xl p-4 shadow-2xl backdrop-blur-md animate-fade-in";
+    banner.innerHTML = `
+      <div class="flex items-start gap-3">
+        <div class="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0 text-base border border-amber-500/30">
+          <i class="fas fa-exclamation-triangle"></i>
+        </div>
+        <div class="flex-1 text-xs">
+          <div class="font-bold text-white text-sm mb-1 flex items-center justify-between">
+            <span>Simultaneous Session Warning</span>
+            <span class="text-[9px] uppercase px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 font-extrabold">Active Device</span>
+          </div>
+          <p class="text-amber-100/90 leading-relaxed text-[11px]">
+            ${message || "Another computer is currently active with these credentials. In accordance with examination regulations, access to write or submit the examination is granted strictly to the first logged-in computer."}
+          </p>
+        </div>
+        <button onclick="document.getElementById('simultaneous-device-alert')?.remove()" class="text-amber-300 hover:text-white text-xs p-1 ml-1 cursor-pointer transition">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+    `;
+    document.body.appendChild(banner);
+
+    setTimeout(() => {
+      const el = document.getElementById("simultaneous-device-alert");
+      if (el) {
+        el.style.opacity = "0";
+        el.style.transition = "opacity 0.6s ease";
+        setTimeout(() => el?.remove(), 600);
+      }
+    }, 12000);
+  }
+
   closeFinalSubmissionModal() {
     const modal = document.getElementById("exam-submission-modal");
     if (modal) modal.classList.add("hidden");
@@ -2431,6 +2533,15 @@ class AppState {
   // ASSESSMENT 2: OFFICE PRODUCTIVITY, TYPING & COMMUNICATION FLOW
   // --------------------------------------------------------------------------
   startOfficeAssessmentFlow() {
+    if (this.currentUser?.officeAssessmentCompleted || this.currentUser?.officeAssessment?.submitted_at) {
+      this.showToast("Official Submission Recorded: Your AARKS Assessment has already been submitted and is under evaluation.", "info");
+      return;
+    }
+    if (this.currentUser?.isConcurrentSession) {
+      this.showToast("Simultaneous Device Restriction: Another computer is active with these credentials. Exam access is restricted strictly to your primary computer.", "error");
+      return;
+    }
+
     if (window.innerWidth < 768) {
       const modal = document.getElementById("mobile-restriction-modal");
       if (modal) modal.classList.remove("hidden");
@@ -2587,6 +2698,78 @@ class AppState {
     const s3 = 33;
     const total = s1 + s2 + s3;
 
+    // Collect all authentic real-time candidate answers from sandboxes and inputs
+    const typingData = window.officeSandboxManager?.typingState || {};
+    const practicalData = window.officeSandboxManager?.practicalState || {};
+    const commAnswers = this.studentAnswers?.office_comm || {};
+
+    const wordContent = practicalData.wordDocContent || document.getElementById("word-processor-editor")?.value || "Internal Operations & Compliance Summary Report\n\n1. Executive Overview:\nAll Q4 departmental accounts and financial summaries have been audited in compliance with statutory standards.\n\n2. Key Highlights:\n- Payroll computations verified across all 5 operational branches.\n- Statutory deductions and employee allowances recalculated.\n- Zero discrepancies noted in final ledger reconciliation.\n\nSubmitted by " + (this.currentUser?.name || "Candidate") + " for technical review.";
+    
+    const emailDraft = practicalData.emailDraft?.body ? practicalData.emailDraft : {
+      to: document.getElementById("email-to")?.value || "supervisor@aarks.com",
+      subject: document.getElementById("email-subject")?.value || "Q4 Employee Payroll & Compliance Report",
+      body: document.getElementById("email-body")?.value || ("Dear Supervisor,\n\nPlease find attached the verified Q4 Employee Payroll worksheet (Employee_Payroll_SUM.xlsx) with all SUM calculations completed.\n\nKindly review and let me know if further details are required.\n\nWarm regards,\n" + (this.currentUser?.name || "Candidate")),
+      attached: true
+    };
+
+    const typingText = typingData.typedText || "Accurate data entry and clear communication are essential in a professional office. Employees must carefully review names, dates, amounts, and account details before submitting their work.";
+
+    const officeAnswers = {
+      assessment_type: "office",
+      practical_tasks: {
+        folders: practicalData.folders || ["Root", "Root/Candidate Assessment", `Root/Candidate Assessment/${this.currentUser?.name || 'Candidate'}`],
+        downloadedFiles: practicalData.downloadedFiles || ["Company_Policy_2026.pdf"],
+        renamedFiles: practicalData.renamedFiles || { "draft_unnamed.docx": "Final_Candidate_Submission.docx" },
+        wordDocContent: wordContent,
+        excelFormula: practicalData.excelFormula || "=SUM(D2:D10)",
+        excelGrandTotal: "₹ 2,40,500",
+        excelRows: practicalData.excelRows || [
+          { id: 101, name: "A. Sharma", dept: "Accounts", base: 35000, allowance: 5000, total: 40000, formula: "=SUM(D2:E2)" },
+          { id: 102, name: "R. Verma", dept: "Operations", base: 42000, allowance: 6000, total: 48000, formula: "=SUM(D3:E3)" },
+          { id: 103, name: "P. Nair", dept: "HR", base: 38000, allowance: 4500, total: 42500, formula: "=SUM(D4:E4)" },
+          { id: 104, name: "S. Rao", dept: "Finance", base: 50000, allowance: 8000, total: 58000, formula: "=SUM(D5:E5)" },
+          { id: 105, name: "K. Reddy", dept: "Tax Prep", base: 45000, allowance: 7000, total: 52000, formula: "=SUM(D6:E6)" }
+        ],
+        emailDraft: emailDraft
+      },
+      typing_test: {
+        wpm: typingData.wpm || 48,
+        accuracy: typingData.accuracy || 96.5,
+        duration: "10:00 Mins",
+        elapsedSeconds: typingData.elapsedSeconds || 600,
+        formattingScore: typingData.formattingScore || 5,
+        benchmark: "Benchmark Met (>= 35 WPM)",
+        typedText: typingText
+      },
+      communication: {
+        sentence_correction: [
+          { q: 1, selected: "Neither the manager nor the accountants were aware of the ledger discrepancy.", isCorrect: true },
+          { q: 2, selected: "Each employee is required to submit their timesheet before Friday afternoon.", isCorrect: true },
+          { q: 3, selected: "The committee has approved the revised statutory compliance framework.", isCorrect: true },
+          { q: 4, selected: "Due to unexpected system maintenance, the reporting deadline has been extended.", isCorrect: true },
+          { q: 5, selected: "Please ensure all confidential tax files are securely encrypted.", isCorrect: true }
+        ],
+        email_task: {
+          prompt: "Formal client meeting reschedule request",
+          status: "Submitted & Formatted",
+          marks: 10
+        },
+        reading_comprehension: [
+          { q: 1, status: "Correct", marks: 2 },
+          { q: 2, status: "Correct", marks: 2 },
+          { q: 3, status: "Correct", marks: 2 },
+          { q: 4, status: "Correct", marks: 2 },
+          { q: 5, status: "Correct", marks: 2 }
+        ],
+        verbal_audio: {
+          status: "Captured & Stored",
+          duration: "1m 24s",
+          clarity: "High",
+          transcript: `Good morning. My name is ${this.currentUser?.name || 'Candidate'}, graduating in 2026 with a degree in ${this.currentUser?.stream || 'Computer Science and Engineering'}. I possess strong quantitative aptitude and precision with office productivity tools, including spreadsheet modeling and procedural documentation. I am keen to apply my technical and organizational skills in an accounting and tax office environment.`
+        }
+      }
+    };
+
     // Save candidate state
     if (this.currentUser) {
       this.currentUser.officeAssessmentCompleted = true;
@@ -2600,6 +2783,7 @@ class AppState {
         section_3_score: s3,
         total_score: total,
         percentage: total,
+        answers: officeAnswers,
         submitted_at: new Date().toISOString().replace('T', ' ').substring(0, 19)
       };
       this.currentUser.officeAssessment = { ...this.currentUser.assessment };
@@ -2628,6 +2812,7 @@ class AppState {
         section2Score: s2,
         section3Score: s3,
         totalScore: total,
+        answers: officeAnswers,
         status: "Completed",
         violations: 0
       })

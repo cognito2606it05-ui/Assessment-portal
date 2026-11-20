@@ -164,19 +164,13 @@ if ($pdo) {
                 $stmt3->execute([$student['id']]);
                 $assessment = $stmt3->fetch();
 
-                // 1. Strict Exam Already Taken Check: Block if candidate already completed/submitted exam
-                if ($student['status'] === 'Completed' || ($assessment && !empty($assessment['submitted_at']))) {
-                    $subTime = $assessment['submitted_at'] ?? 'previously';
-                    echo json_encode([
-                        "success" => false,
-                        "errorType" => "EXAM_ALREADY_TAKEN",
-                        "error" => "Exam Already Taken: Your examination was completed and submitted on {$subTime}. In accordance with strict Quantex examination security protocols, multiple logins or re-attempting the test is forbidden.",
-                        "submittedAt" => $subTime
-                    ]);
-                    exit;
-                }
+                // 1. Exam status evaluation: Candidate can always sign in to view status/dossier
+                $isExamCompleted = ($student['status'] === 'Completed' || ($assessment && !empty($assessment['submitted_at'])));
+                $subTime = $assessment['submitted_at'] ?? null;
 
-                // 2. Strict Concurrent Login Check: If active on PC 1, block PC 2!
+                // 2. Concurrent Session Detection: Allow sign-in, but alert & flag if another PC is actively logged in
+                $isConcurrentSession = false;
+                $concurrentWarning = null;
                 if (!empty($deviceId)) {
                     try {
                         $chkSess = $pdo->prepare("SELECT `device_id`, `is_active`, `last_activity` FROM `student_active_sessions` WHERE `student_id` = ? LIMIT 1");
@@ -187,31 +181,34 @@ if ($pdo) {
                             $sessTime = strtotime($activeSession['last_activity']);
                             $isRecentlyActive = (time() - $sessTime) < (4 * 3600); // 4-hour active session window
                             if ($isRecentlyActive && $activeSession['device_id'] !== $deviceId) {
-                                echo json_encode([
-                                    "success" => false,
-                                    "errorType" => "CONCURRENT_LOGIN_BLOCKED",
-                                    "error" => "Exam Access Restricted: This candidate account is already logged in and active on another computer. To prevent impersonation and maintain assessment integrity, access is granted strictly to the first logged-in computer only.",
-                                    "activeDevice" => true
-                                ]);
-                                exit;
+                                $isConcurrentSession = true;
+                                $concurrentWarning = "Active Session Detected: Another computer is already signed in with this account. Examination regulations strictly permit test submission from your primary computer only.";
                             }
                         }
                     } catch (Exception $eSessChk) {}
                 }
 
-                // 3. First login user granted access: record active session
+                // 3. Record or update session for primary device
                 $newSessionToken = bin2hex(random_bytes(16));
                 $clientIp = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
                 $clientUa = substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 250);
 
-                try {
-                    $upsertSess = $pdo->prepare("
-                        INSERT INTO `student_active_sessions` (`student_id`, `device_id`, `session_token`, `ip_address`, `user_agent`, `is_active`, `last_activity`)
-                        VALUES (?, ?, ?, ?, ?, 1, NOW())
-                        ON DUPLICATE KEY UPDATE
-                            `device_id` = VALUES(`device_id`),
-                            `session_token` = VALUES(`session_token`),
-                            `ip_address` = VALUES(`ip_address`),
+                if (!$isConcurrentSession) {
+                    try {
+                        $upsertSess = $pdo->prepare("
+                            INSERT INTO `student_active_sessions` (`student_id`, `device_id`, `session_token`, `ip_address`, `user_agent`, `is_active`, `last_activity`)
+                            VALUES (?, ?, ?, ?, ?, 1, NOW())
+                            ON DUPLICATE KEY UPDATE
+                                `device_id` = VALUES(`device_id`),
+                                `session_token` = VALUES(`session_token`),
+                                `ip_address` = VALUES(`ip_address`),
+                                `user_agent` = VALUES(`user_agent`),
+                                `is_active` = 1,
+                                `last_activity` = NOW()
+                        ");
+                        $upsertSess->execute([$student['id'], $deviceId, $newSessionToken, $clientIp, $clientUa]);
+                    } catch (Exception $eUpsert) {}
+                }
                             `user_agent` = VALUES(`user_agent`),
                             `is_active` = 1,
                             `last_activity` = NOW()
@@ -269,6 +266,11 @@ if ($pdo) {
                         "skills" => $student['skills'] ?? '',
                         "domainInterest" => $student['domain_interest'] ?? '',
                         "status" => $student['status'],
+                        "testStatus" => $student['status'],
+                        "examCompleted" => $isExamCompleted,
+                        "submittedAt" => $subTime,
+                        "isConcurrentSession" => $isConcurrentSession,
+                        "concurrentWarning" => $concurrentWarning,
                         "assessment" => $assessment ?: null,
                         "latestAttempt" => $attempt ?: null,
                         "tasks" => $tasks ?: [],

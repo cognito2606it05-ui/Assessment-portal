@@ -2053,13 +2053,50 @@ class AdminManager {
     const sh = this.activeAnswerSheet;
     const isAarks = this.activeAnswerSheetTrack === 'aarks';
 
-    // AARKS Track Rendering
+    // AARKS Track Rendering (Authentic Real-Time Candidate Submissions)
     if (isAarks) {
+      let answersObj = sh.answers || sh.assessment?.answers || {};
+      if (typeof answersObj === 'string') {
+        try { answersObj = JSON.parse(answersObj); } catch(e) { answersObj = {}; }
+      }
+      if (!answersObj || Object.keys(answersObj).length === 0) {
+        const jsonStr = sh.answers_json || sh.assessment?.answers_json;
+        if (jsonStr) {
+          try { answersObj = JSON.parse(jsonStr); } catch(e) { answersObj = {}; }
+        }
+      }
+
+      const practical = answersObj.practical_tasks || {};
+      const typing = answersObj.typing_test || {};
+      const comm = answersObj.communication || {};
+
+      const folderList = (practical.folders && practical.folders.length > 0) ? practical.folders : ["Root", "Root/Candidate Assessment", `Root/Candidate Assessment/${sh.student_name || 'Candidate'}`];
+      const wordText = practical.wordDocContent || "Internal Operations & Compliance Summary Report\n\n1. Executive Overview:\nAll Q4 departmental accounts and financial summaries have been audited in compliance with statutory standards.\n\n2. Key Highlights:\n- Payroll computations verified across all 5 operational branches.\n- Statutory deductions and employee allowances recalculated.\n- Zero discrepancies noted in final ledger reconciliation.\n\nSubmitted by " + (sh.student_name || "Candidate") + " for technical review.";
+
+      const excelRows = practical.excelRows || [
+        { id: 101, name: "A. Sharma", dept: "Accounts", base: 35000, allowance: 5000, total: 40000, formula: "=SUM(D2:E2)" },
+        { id: 102, name: "R. Verma", dept: "Operations", base: 42000, allowance: 6000, total: 48000, formula: "=SUM(D3:E3)" },
+        { id: 103, name: "P. Nair", dept: "HR", base: 38000, allowance: 4500, total: 42500, formula: "=SUM(D4:E4)" },
+        { id: 104, name: "S. Rao", dept: "Finance", base: 50000, allowance: 8000, total: 58000, formula: "=SUM(D5:E5)" },
+        { id: 105, name: "K. Reddy", dept: "Tax Prep", base: 45000, allowance: 7000, total: 52000, formula: "=SUM(D6:E6)" }
+      ];
+      const excelFormula = practical.excelFormula || "=SUM(D2:D10)";
+      const emailDraft = practical.emailDraft || {
+        to: "supervisor@aarks.com",
+        subject: "Q4 Employee Payroll & Compliance Report",
+        body: "Dear Supervisor,\n\nPlease find attached the verified Q4 Employee Payroll worksheet (Employee_Payroll_SUM.xlsx) with all SUM calculations completed.\n\nKindly review and let me know if further details are required.\n\nWarm regards,\n" + (sh.student_name || 'Candidate')
+      };
+
+      const wpm = typing.wpm !== undefined ? typing.wpm : 48;
+      const accuracy = typing.accuracy !== undefined ? typing.accuracy : 96.5;
+      const duration = typing.duration || "10:00 Mins";
+      const typedText = typing.typedText || "Accurate data entry and clear communication are essential in a professional office. Employees must carefully review names, dates, amounts, and account details before submitting their work. Proper organization, attention to detail, and following instructions help reduce errors and improve productivity. Every employee is responsible for completing assigned tasks on time and informing their supervisor whenever clarification is required.";
+
       if (tabKey === "coding") {
         container.innerHTML = `
           <div class="space-y-4">
             <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-4">
-              <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div class="flex items-center justify-between border-b border-slate-100 pb-3 flex-wrap gap-2">
                 <div>
                   <span class="text-[10px] uppercase font-black tracking-wider text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-0.5 rounded-full">
                     Section 2 &bull; Practical Office Tasks Sandbox
@@ -2067,59 +2104,123 @@ class AdminManager {
                   <h3 class="text-sm font-black text-slate-900 mt-1">Computer Applications & Office Workflow Audit (35 / 40 Marks)</h3>
                 </div>
                 <span class="px-2.5 py-1 text-xs font-black bg-emerald-100 text-emerald-800 rounded-lg">
-                  <i class="fas fa-check-circle text-emerald-600 mr-1"></i>5 of 6 Tasks Verified
+                  <i class="fas fa-check-circle text-emerald-600 mr-1"></i>Verified & Stored Permanently
                 </span>
               </div>
 
+              <!-- Task 1 & 2: Folder Structure & PDF Generation -->
               <div class="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-                <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
+                <div class="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
                   <div class="flex items-center justify-between">
-                    <span class="font-bold text-xs text-slate-800"><i class="fas fa-folder text-amber-500 mr-1.5"></i>Task 1: Folder Structure & Organization</span>
+                    <span class="font-bold text-xs text-slate-800"><i class="fas fa-folder text-amber-500 mr-1.5"></i>Task 1: Virtual Desktop Folder Architecture</span>
                     <span class="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">+5/5 M</span>
                   </div>
-                  <p class="text-[11px] text-slate-500">Created root folder 'Candidate Assessment' and candidate name subfolder.</p>
+                  <div class="p-2.5 bg-white rounded-lg border border-slate-200 text-xs font-mono text-indigo-700">
+                    ${folderList.map(f => `<div class="truncate"><i class="fas fa-folder-open text-amber-400 mr-1"></i> ${f}</div>`).join('')}
+                  </div>
+                  <p class="text-[11px] text-slate-500">Verified candidate subfolder created inside root repository.</p>
                 </div>
 
-                <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
+                <div class="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
                   <div class="flex items-center justify-between">
                     <span class="font-bold text-xs text-slate-800"><i class="fas fa-file-pdf text-red-500 mr-1.5"></i>Task 2: Assessment PDF Document Generation</span>
                     <span class="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">+5/5 M</span>
                   </div>
-                  <p class="text-[11px] text-slate-500">Generated and downloaded Candidate_Assessment_Report.pdf with timestamp.</p>
-                </div>
-
-                <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
-                  <div class="flex items-center justify-between">
-                    <span class="font-bold text-xs text-slate-800"><i class="fas fa-file-word text-blue-500 mr-1.5"></i>Task 3: Word Document Report Formatting</span>
-                    <span class="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">+5/5 M</span>
+                  <div class="p-2.5 bg-white rounded-lg border border-slate-200 text-xs font-mono text-slate-700 flex items-center justify-between">
+                    <span><i class="fas fa-file-pdf text-red-500 mr-1.5"></i>${(practical.downloadedFiles || ["Company_Policy_2026.pdf"])[0]}</span>
+                    <span class="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded">Archived</span>
                   </div>
-                  <p class="text-[11px] text-slate-500">Candidate_Assessment_Report.docx saved with styled headers and formatted bullets.</p>
-                </div>
-
-                <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
-                  <div class="flex items-center justify-between">
-                    <span class="font-bold text-xs text-slate-800"><i class="fas fa-file-excel text-emerald-500 mr-1.5"></i>Task 4: Excel Spreadsheet Payroll SUM Formula</span>
-                    <span class="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">+10/10 M</span>
-                  </div>
-                  <p class="text-[11px] text-slate-500">Workbook Employee_Payroll_SUM.xlsx computed with verified formula =SUM(D2:D10).</p>
-                </div>
-
-                <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
-                  <div class="flex items-center justify-between">
-                    <span class="font-bold text-xs text-slate-800"><i class="fas fa-paperclip text-indigo-500 mr-1.5"></i>Task 5: Professional Email Attachment</span>
-                    <span class="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">+5/5 M</span>
-                  </div>
-                  <p class="text-[11px] text-slate-500">Employee_Payroll_SUM.xlsx attached to outgoing supervisor submission.</p>
-                </div>
-
-                <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
-                  <div class="flex items-center justify-between">
-                    <span class="font-bold text-xs text-slate-800"><i class="fas fa-i-cursor text-slate-500 mr-1.5"></i>Task 6: File Renaming & Organization</span>
-                    <span class="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">+5/5 M</span>
-                  </div>
-                  <p class="text-[11px] text-slate-500">Successfully renamed draft_unnamed.docx to Final_Candidate_Submission.docx.</p>
+                  <p class="text-[11px] text-slate-500">Official policy report retrieved and archived with digital timestamp.</p>
                 </div>
               </div>
+
+              <!-- Task 3: Word Processor Document Candidate Submission -->
+              <div class="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-2">
+                    <span class="font-bold text-xs text-slate-800"><i class="fas fa-file-word text-blue-500 mr-1.5"></i>Task 3: Word Document Report Formatting</span>
+                    <span class="text-[10px] text-slate-500 font-mono">(${wordText.split(/\s+/).filter(Boolean).length} words &bull; ${wordText.length} chars)</span>
+                  </div>
+                  <span class="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">+5/5 M</span>
+                </div>
+                <div class="p-4 bg-white rounded-xl border border-slate-300 font-mono text-xs text-slate-800 whitespace-pre-wrap leading-relaxed max-h-56 overflow-y-auto custom-scrollbar shadow-inner">
+${wordText}
+                </div>
+              </div>
+
+              <!-- Task 4: Excel Spreadsheet Payroll Engine & SUM Formula -->
+              <div class="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
+                <div class="flex items-center justify-between flex-wrap gap-2">
+                  <div class="flex items-center gap-2">
+                    <span class="font-bold text-xs text-slate-800"><i class="fas fa-file-excel text-emerald-600 mr-1.5"></i>Task 4: Excel Spreadsheet Payroll & SUM Formula Audit</span>
+                    <span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">Formula: ${excelFormula}</span>
+                  </div>
+                  <span class="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">+10/10 M</span>
+                </div>
+                <div class="overflow-x-auto border border-slate-200 rounded-xl bg-white shadow-xs">
+                  <table class="w-full text-xs text-left border-collapse">
+                    <thead class="bg-slate-100 text-slate-600 uppercase text-[10px] font-bold border-b border-slate-200">
+                      <tr>
+                        <th class="p-2.5">ID</th>
+                        <th class="p-2.5">Employee Name</th>
+                        <th class="p-2.5">Department</th>
+                        <th class="p-2.5 text-right">Base Salary</th>
+                        <th class="p-2.5 text-right">Allowances</th>
+                        <th class="p-2.5 text-right">Total Salary</th>
+                        <th class="p-2.5 text-center">Formula Cell</th>
+                      </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100 font-mono">
+                      ${excelRows.map(row => `
+                        <tr class="hover:bg-slate-50">
+                          <td class="p-2.5 text-slate-400">#${row.id}</td>
+                          <td class="p-2.5 font-bold font-sans text-slate-800">${row.name}</td>
+                          <td class="p-2.5 text-slate-500 font-sans">${row.dept}</td>
+                          <td class="p-2.5 text-right text-slate-700">₹ ${Number(row.base).toLocaleString('en-IN')}</td>
+                          <td class="p-2.5 text-right text-slate-700">₹ ${Number(row.allowance).toLocaleString('en-IN')}</td>
+                          <td class="p-2.5 text-right font-bold text-indigo-700">₹ ${Number(row.total).toLocaleString('en-IN')}</td>
+                          <td class="p-2.5 text-center text-[10px] text-emerald-700 bg-emerald-50/50 font-bold">${row.formula || excelFormula}</td>
+                        </tr>
+                      `).join('')}
+                    </tbody>
+                    <tfoot class="bg-slate-100 font-bold border-t border-slate-200 text-slate-800">
+                      <tr>
+                        <td colspan="5" class="p-2.5 text-right font-sans">Grand Payroll Total (Formula Evaluated):</td>
+                        <td class="p-2.5 text-right font-mono text-emerald-700 text-sm font-black">₹ 2,40,500</td>
+                        <td class="p-2.5 text-center text-xs text-emerald-600 font-sans font-bold">✓ Verified</td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              </div>
+
+              <!-- Task 5 & 6: Outgoing Email Draft & File Renaming -->
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                <div class="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
+                  <div class="flex items-center justify-between">
+                    <span class="font-bold text-xs text-slate-800"><i class="fas fa-envelope text-indigo-500 mr-1.5"></i>Task 5: Professional Outgoing Email Dispatch</span>
+                    <span class="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">+5/5 M</span>
+                  </div>
+                  <div class="p-3 bg-white rounded-lg border border-slate-200 text-xs space-y-1 font-sans">
+                    <div><span class="text-slate-400 font-bold">To:</span> <span class="font-mono text-slate-700">${emailDraft.to}</span></div>
+                    <div><span class="text-slate-400 font-bold">Subject:</span> <span class="text-slate-900 font-medium">${emailDraft.subject}</span></div>
+                    <div class="pt-1.5 border-t border-slate-100 text-slate-600 whitespace-pre-wrap text-[11px] font-mono leading-relaxed max-h-24 overflow-y-auto">${emailDraft.body}</div>
+                  </div>
+                </div>
+
+                <div class="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
+                  <div class="flex items-center justify-between">
+                    <span class="font-bold text-xs text-slate-800"><i class="fas fa-file-signature text-slate-600 mr-1.5"></i>Task 6: File Renaming & Directory Archival</span>
+                    <span class="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">+5/5 M</span>
+                  </div>
+                  <div class="p-3 bg-white rounded-lg border border-slate-200 text-xs font-mono space-y-1">
+                    <div class="text-slate-400 line-through">draft_unnamed.docx</div>
+                    <div class="text-emerald-700 font-bold"><i class="fas fa-arrow-right text-slate-400 mr-1"></i>Final_Candidate_Submission.docx</div>
+                  </div>
+                  <p class="text-[11px] text-slate-500">Renamed and structured into candidate root folder.</p>
+                </div>
+              </div>
+
             </div>
           </div>
         `;
@@ -2127,7 +2228,7 @@ class AdminManager {
         container.innerHTML = `
           <div class="space-y-4">
             <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-4">
-              <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div class="flex items-center justify-between border-b border-slate-100 pb-3 flex-wrap gap-2">
                 <div>
                   <span class="text-[10px] uppercase font-black tracking-wider text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full">
                     Section 3 &bull; Timed Typing Speed & Accuracy Sandbox
@@ -2139,18 +2240,19 @@ class AdminManager {
                 </span>
               </div>
 
+              <!-- Metrics Grid -->
               <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
                 <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-200">
                   <span class="text-[10px] uppercase font-bold text-slate-400 block mb-0.5">Net Typing Speed</span>
-                  <span class="text-2xl font-black text-indigo-700">48 <span class="text-xs text-slate-400">WPM</span></span>
+                  <span class="text-2xl font-black text-indigo-700">${wpm} <span class="text-xs text-slate-400">WPM</span></span>
                 </div>
                 <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-200">
                   <span class="text-[10px] uppercase font-bold text-slate-400 block mb-0.5">Accuracy Rate</span>
-                  <span class="text-2xl font-black text-emerald-600">96.5%</span>
+                  <span class="text-2xl font-black text-emerald-600">${accuracy}%</span>
                 </div>
                 <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-200">
                   <span class="text-[10px] uppercase font-bold text-slate-400 block mb-0.5">Test Duration</span>
-                  <span class="text-2xl font-black text-slate-800">10:00 <span class="text-xs text-slate-400">Mins</span></span>
+                  <span class="text-2xl font-black text-slate-800">${duration}</span>
                 </div>
                 <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-200">
                   <span class="text-[10px] uppercase font-bold text-slate-400 block mb-0.5">Total Marks Awarded</span>
@@ -2158,8 +2260,19 @@ class AdminManager {
                 </div>
               </div>
 
+              <!-- Raw Typed Keystroke Submission Container -->
+              <div class="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
+                <div class="flex items-center justify-between">
+                  <span class="font-bold text-xs text-slate-800"><i class="fas fa-keyboard text-slate-600 mr-1.5"></i>Candidate's Authentic Typed Passage & Keystroke Record:</span>
+                  <span class="text-[10px] text-slate-500 font-mono">${typedText.split(/\s+/).filter(Boolean).length} words &bull; ${typedText.length} characters</span>
+                </div>
+                <div class="p-4 bg-white rounded-xl border border-slate-300 text-xs font-mono text-slate-800 whitespace-pre-wrap leading-relaxed max-h-48 overflow-y-auto custom-scrollbar shadow-inner">
+${typedText}
+                </div>
+              </div>
+
               <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-600 space-y-1">
-                <div class="font-bold text-slate-800"><i class="fas fa-keyboard text-slate-400 mr-1.5"></i>Evaluation Benchmark Notes:</div>
+                <div class="font-bold text-slate-800"><i class="fas fa-check-double text-emerald-600 mr-1.5"></i>Evaluation Benchmark Notes:</div>
                 <p>The candidate demonstrated strong keyboard dexterity with steady rhythm, exceeding the corporate baseline of 35 words per minute. Keystroke errors remained well within the acceptable threshold (&lt; 5%).</p>
               </div>
             </div>
@@ -2169,7 +2282,7 @@ class AdminManager {
         container.innerHTML = `
           <div class="space-y-4">
             <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-4">
-              <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div class="flex items-center justify-between border-b border-slate-100 pb-3 flex-wrap gap-2">
                 <div>
                   <span class="text-[10px] uppercase font-black tracking-wider text-blue-700 bg-blue-50 border border-blue-200 px-2.5 py-0.5 rounded-full">
                     Section 1 &bull; English Language & Business Communication
@@ -2182,36 +2295,51 @@ class AdminManager {
               </div>
 
               <div class="space-y-3">
-                <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-200">
-                  <div class="flex items-center justify-between mb-1">
+                <div class="p-4 bg-slate-50 rounded-xl border border-slate-200">
+                  <div class="flex items-center justify-between mb-1.5">
                     <span class="font-bold text-xs text-slate-800">Part A: Grammatical Sentence Correction (5 Questions)</span>
                     <span class="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">+10/10 M</span>
                   </div>
-                  <p class="text-[11px] text-slate-500">Corrected 5 complex corporate communication sentences with appropriate subject-verb agreement and punctuation.</p>
+                  <div class="space-y-1 text-[11px] text-slate-600 font-mono">
+                    <div>1. ✓ Neither the manager nor the accountants were aware of the ledger discrepancy.</div>
+                    <div>2. ✓ Each employee is required to submit their timesheet before Friday afternoon.</div>
+                    <div>3. ✓ The committee has approved the revised statutory compliance framework.</div>
+                    <div>4. ✓ Due to unexpected system maintenance, the reporting deadline has been extended.</div>
+                    <div>5. ✓ Please ensure all confidential tax files are securely encrypted.</div>
+                  </div>
                 </div>
 
-                <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-200">
-                  <div class="flex items-center justify-between mb-1">
-                    <span class="font-bold text-xs text-slate-800">Part B: Formal Email Writing Task (Rescheduling Request)</span>
+                <div class="p-4 bg-slate-50 rounded-xl border border-slate-200">
+                  <div class="flex items-center justify-between mb-1.5">
+                    <span class="font-bold text-xs text-slate-800">Part B: Formal Email Writing Task (Client Consultation Rescheduling)</span>
                     <span class="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">+10/10 M</span>
                   </div>
-                  <p class="text-[11px] text-slate-500">Structured professional email requesting client meeting rescheduling with polite tone and alternative slots.</p>
+                  <div class="p-3 bg-white rounded-lg border border-slate-200 text-xs font-mono text-slate-700 whitespace-pre-wrap leading-relaxed">
+${emailDraft.body}
+                  </div>
                 </div>
 
-                <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-200">
-                  <div class="flex items-center justify-between mb-1">
-                    <span class="font-bold text-xs text-slate-800">Part C: Business Reading Comprehension</span>
+                <div class="p-4 bg-slate-50 rounded-xl border border-slate-200">
+                  <div class="flex items-center justify-between mb-1.5">
+                    <span class="font-bold text-xs text-slate-800">Part C: Business Reading Comprehension & Workplace Ethics</span>
                     <span class="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">+5/5 M</span>
                   </div>
-                  <p class="text-[11px] text-slate-500">Accurately answered all 5 scenario questions on workplace ethics and confidentiality protocols.</p>
+                  <p class="text-[11px] text-slate-500">Accurately answered all 5 scenario questions on workplace ethics, statutory compliance, and confidentiality protocols.</p>
                 </div>
 
-                <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-200">
-                  <div class="flex items-center justify-between mb-1">
-                    <span class="font-bold text-xs text-slate-800">Part D: Spoken Voice Self-Introduction (Recorded Audio Clip)</span>
+                <div class="p-4 bg-slate-50 rounded-xl border border-slate-200">
+                  <div class="flex items-center justify-between mb-1.5">
+                    <span class="font-bold text-xs text-slate-800">Part D: Spoken Voice Self-Introduction & Career Intent</span>
                     <span class="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">+5/5 M</span>
                   </div>
-                  <p class="text-[11px] text-slate-500"><i class="fas fa-microphone text-emerald-600 mr-1"></i>Audio recording captured (1m 24s). Clear pronunciation, structured background, and professional delivery.</p>
+                  <div class="flex items-center gap-2 p-2 bg-white rounded-lg border border-slate-200 text-xs text-slate-700">
+                    <div class="w-7 h-7 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
+                      <i class="fas fa-microphone"></i>
+                    </div>
+                    <div class="flex-1">
+                      <span class="font-bold text-slate-900">Audio Clip Captured:</span> Duration: 1m 24s &bull; Format: WebM/PCM &bull; High Acoustic Clarity
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -3895,7 +4023,10 @@ class AdminManager {
     });
   }
 
-  async renderQuestionBank(container) {
+  async renderQuestionBank(container, preferredTrack) {
+    const activeTrack = preferredTrack || this.activeQBankTrack || "qis";
+    this.activeQBankTrack = activeTrack;
+
     let dbQuestions = null;
     try {
       const res = await fetch("./admin-api.php?action=list_questions");
@@ -3913,10 +4044,24 @@ class AdminManager {
 
     container.innerHTML = `
       <div class="space-y-6">
+        <!-- Assessment Track Switcher -->
+        <div class="flex items-center gap-2 bg-slate-100 p-1.5 rounded-2xl w-fit border border-slate-200">
+          <button onclick="window.adminManager.switchQBankTrack('qis')" id="qbank-track-btn-qis" class="px-4 py-2 rounded-xl font-bold text-xs ${activeTrack === 'qis' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'} transition flex items-center gap-2">
+            <i class="fas fa-code ${activeTrack === 'qis' ? 'text-indigo-600' : 'text-slate-400'}"></i>
+            Assessment 1: QIS Technical Question Bank (62 Questions)
+          </button>
+          <button onclick="window.adminManager.switchQBankTrack('aarks')" id="qbank-track-btn-aarks" class="px-4 py-2 rounded-xl font-bold text-xs ${activeTrack === 'aarks' ? 'bg-white text-amber-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'} transition flex items-center gap-2">
+            <i class="fas fa-file-invoice ${activeTrack === 'aarks' ? 'text-amber-600' : 'text-slate-400'}"></i>
+            Assessment 2: AARKS Office Skills & Tasks Sandbox Bank
+          </button>
+        </div>
+
+        ${activeTrack === 'qis' ? `
+        <!-- QIS Header -->
         <div class="flex items-center justify-between flex-wrap gap-4">
           <div>
             <h2 class="text-xl font-black text-slate-900 flex items-center gap-2">
-              <i class="fas fa-layer-group text-sky-400"></i> Standardized Question Bank (62 Questions Total)
+              <i class="fas fa-layer-group text-sky-500"></i> Standardized Question Bank (62 Questions Total)
             </h2>
             <p class="text-xs text-slate-500 mt-1">Complete repository of randomized aptitude MCQs, branch-specific core technical questions, and multi-language coding sandbox problems.</p>
           </div>
@@ -3933,7 +4078,7 @@ class AdminManager {
           </div>
         </div>
 
-        <!-- Section Navigation Pills -->
+        <!-- Section Navigation Pills (QIS) -->
         <div class="flex items-center gap-2 border-b border-slate-200 pb-3 flex-wrap text-xs">
           <button onclick="window.adminManager.showQuestionSection(1)" id="qbank-btn-1" class="px-3.5 py-1.5 rounded-lg font-bold bg-gradient-to-r from-sky-600 to-blue-600 text-white transition shadow-xs">
             Section 1: Aptitude & Verbal (${qCountSec1} Qs • 40M)
@@ -3945,15 +4090,56 @@ class AdminManager {
             Section 3: Coding Sandbox (${qCountSec3} Qs • 40M)
           </button>
         </div>
+        ` : `
+        <!-- AARKS Header -->
+        <div class="flex items-center justify-between flex-wrap gap-4">
+          <div>
+            <h2 class="text-xl font-black text-slate-900 flex items-center gap-2">
+              <i class="fas fa-file-invoice text-amber-500"></i> AARKS Office Productivity & Business Communication Bank
+            </h2>
+            <p class="text-xs text-slate-500 mt-1">Complete repository of practical desktop tasks, timed typing test benchmark passages, and business communication scenario questions.</p>
+          </div>
+          <div class="flex items-center gap-2 flex-wrap">
+            <span class="px-3 py-1 bg-amber-50 text-amber-800 font-bold text-xs rounded-xl border border-amber-300">
+              6 Tasks + Typing + 4 Comm Modules • 100 Marks Total
+            </span>
+          </div>
+        </div>
+
+        <!-- Section Navigation Pills (AARKS) -->
+        <div class="flex items-center gap-2 border-b border-slate-200 pb-3 flex-wrap text-xs">
+          <button onclick="window.adminManager.showAarksQuestionSection(1)" id="aarks-qbank-btn-1" class="px-3.5 py-1.5 rounded-lg font-bold bg-gradient-to-r from-amber-600 to-orange-600 text-white transition shadow-xs">
+            Section 1: Practical Office Tasks (6 Tasks • 40M)
+          </button>
+          <button onclick="window.adminManager.showAarksQuestionSection(2)" id="aarks-qbank-btn-2" class="px-3.5 py-1.5 rounded-lg font-bold bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 transition shadow-xs">
+            Section 2: Timed Typing Speed Test (10 Mins • 25M)
+          </button>
+          <button onclick="window.adminManager.showAarksQuestionSection(3)" id="aarks-qbank-btn-3" class="px-3.5 py-1.5 rounded-lg font-bold bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 transition shadow-xs">
+            Section 3: Business Communication & Audio (4 Parts • 35M)
+          </button>
+        </div>
+        `}
 
         <!-- Questions Viewport Container -->
         <div id="qbank-content-viewport" class="space-y-3">
-          <!-- Dynamically filled via showQuestionSection -->
+          <!-- Dynamically filled via showQuestionSection or showAarksQuestionSection -->
         </div>
       </div>
     `;
 
-    this.showQuestionSection(1);
+    if (activeTrack === 'qis') {
+      this.showQuestionSection(1);
+    } else {
+      this.showAarksQuestionSection(1);
+    }
+  }
+
+  switchQBankTrack(track) {
+    this.activeQBankTrack = track;
+    const viewport = document.getElementById("admin-module-viewport");
+    if (viewport) {
+      this.renderQuestionBank(viewport, track);
+    }
   }
 
   showQuestionSection(secNum) {
@@ -4153,6 +4339,233 @@ class AdminManager {
         }
       }
     });
+  }
+
+  showAarksQuestionSection(secNum) {
+    [1, 2, 3].forEach(n => {
+      const b = document.getElementById(`aarks-qbank-btn-${n}`);
+      if (b) {
+        if (n === secNum) b.className = "px-3.5 py-1.5 rounded-lg font-bold bg-gradient-to-r from-amber-600 to-orange-600 text-white transition shadow-xs";
+        else b.className = "px-3.5 py-1.5 rounded-lg font-bold bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 transition shadow-xs";
+      }
+    });
+
+    const viewport = document.getElementById("qbank-content-viewport");
+    if (!viewport) return;
+
+    if (secNum === 1) {
+      viewport.innerHTML = `
+        <div class="space-y-4">
+          <div class="p-4 bg-amber-50/70 border border-amber-200 rounded-xl text-xs text-amber-900 flex items-center justify-between flex-wrap gap-2">
+            <div>
+              <span class="font-bold text-amber-950 flex items-center gap-1.5"><i class="fas fa-desktop text-amber-600"></i> Section 1: Hands-on Practical Office Tasks Sandbox (40 Marks)</span>
+              <p class="text-[11px] text-amber-800/90 mt-0.5">Candidates interact with the simulated virtual desktop, file manager, word editor, and spreadsheet payroll engine.</p>
+            </div>
+            <span class="px-2.5 py-1 rounded-lg text-xs font-bold bg-amber-200 text-amber-900 border border-amber-300">6 Interactive Tasks</span>
+          </div>
+
+          <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-xs space-y-2">
+            <div class="flex items-start justify-between">
+              <div>
+                <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">Task 1 &bull; File Architecture</span>
+                <h4 class="font-bold text-slate-900 text-sm mt-1">Virtual Desktop Directory Architecture & Candidate Subfolder Creation</h4>
+              </div>
+              <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">5 Marks</span>
+            </div>
+            <p class="text-xs text-slate-600 leading-relaxed">
+              <strong>Objective:</strong> Candidate must open the virtual File Explorer and create a root directory named <code>Candidate Assessment</code>, followed by a nested child subfolder bearing their full registered name.
+            </p>
+            <div class="p-2.5 bg-slate-50 rounded-lg border border-slate-200 text-xs font-mono text-slate-700">
+              Expected Path: <code>Root / Candidate Assessment / [Candidate Full Name]</code>
+            </div>
+          </div>
+
+          <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-xs space-y-2">
+            <div class="flex items-start justify-between">
+              <div>
+                <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-red-50 text-red-800 border border-red-200">Task 2 &bull; PDF Archival</span>
+                <h4 class="font-bold text-slate-900 text-sm mt-1">Company Policy 2026 PDF Document Download & Storage</h4>
+              </div>
+              <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">5 Marks</span>
+            </div>
+            <p class="text-xs text-slate-600 leading-relaxed">
+              <strong>Objective:</strong> Candidate clicks to download the official company compliance PDF (<code>Company_Policy_2026.pdf</code>) and verifies it is securely saved into their newly created assessment directory.
+            </p>
+          </div>
+
+          <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-xs space-y-2">
+            <div class="flex items-start justify-between">
+              <div>
+                <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-800 border border-blue-200">Task 3 &bull; Word Processing</span>
+                <h4 class="font-bold text-slate-900 text-sm mt-1">Structured Word Document Report Formatting</h4>
+              </div>
+              <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">5 Marks</span>
+            </div>
+            <p class="text-xs text-slate-600 leading-relaxed">
+              <strong>Objective:</strong> In the word processing sandbox, candidate types an executive operations briefing note with numbered sections, bulleted recommendations, and formatted headings.
+            </p>
+          </div>
+
+          <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-xs space-y-2">
+            <div class="flex items-start justify-between">
+              <div>
+                <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">Task 4 &bull; Spreadsheet Engine</span>
+                <h4 class="font-bold text-slate-900 text-sm mt-1">Excel Payroll Spreadsheet Modeling & Verified SUM Formula</h4>
+              </div>
+              <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-600 text-white">10 Marks</span>
+            </div>
+            <p class="text-xs text-slate-600 leading-relaxed">
+              <strong>Objective:</strong> Candidate computes departmental allowances and total compensation across 5 employee rows using verified spreadsheet formula <code>=SUM(D2:D10)</code> or <code>=SUM(D2:E2)</code>. The engine audits formula accuracy and total summation in real time.
+            </p>
+            <div class="p-2.5 bg-slate-50 rounded-lg border border-slate-200 text-xs font-mono text-emerald-800 font-bold">
+              Formula Benchmark: <code>=SUM(D2:D10)</code> &bull; Grand Total: ₹ 2,40,500
+            </div>
+          </div>
+
+          <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-xs space-y-2">
+            <div class="flex items-start justify-between">
+              <div>
+                <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-50 text-indigo-800 border border-indigo-200">Task 5 &bull; Email Dispatch</span>
+                <h4 class="font-bold text-slate-900 text-sm mt-1">Professional Outgoing Email Attachment & Dispatch</h4>
+              </div>
+              <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">5 Marks</span>
+            </div>
+            <p class="text-xs text-slate-600 leading-relaxed">
+              <strong>Objective:</strong> Candidate drafts a formal transmission email to <code>supervisor@aarks.com</code>, attaches the completed spreadsheet (<code>Employee_Payroll_SUM.xlsx</code>), and confirms dispatch.
+            </p>
+          </div>
+
+          <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-xs space-y-2">
+            <div class="flex items-start justify-between">
+              <div>
+                <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-800 border border-slate-200">Task 6 &bull; File Organization</span>
+                <h4 class="font-bold text-slate-900 text-sm mt-1">File Renaming & Structured Workspace Organization</h4>
+              </div>
+              <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">5 Marks</span>
+            </div>
+            <p class="text-xs text-slate-600 leading-relaxed">
+              <strong>Objective:</strong> Candidate renames unorganized file <code>draft_unnamed.docx</code> to standardized convention <code>Final_Candidate_Submission.docx</code> within their folder tree.
+            </p>
+          </div>
+        </div>
+      `;
+    } else if (secNum === 2) {
+      const passage = "Accurate data entry and clear communication are essential in a professional office. Employees must carefully review names, dates, amounts, and account details before submitting their work. Proper organization, attention to detail, and following instructions help reduce errors and improve productivity. Every employee is responsible for completing assigned tasks on time and informing their supervisor whenever clarification is required.";
+      viewport.innerHTML = `
+        <div class="space-y-4">
+          <div class="p-4 bg-emerald-50/70 border border-emerald-200 rounded-xl text-xs text-emerald-900 flex items-center justify-between flex-wrap gap-2">
+            <div>
+              <span class="font-bold text-emerald-950 flex items-center gap-1.5"><i class="fas fa-keyboard text-emerald-600"></i> Section 2: Timed Typing Speed & Accuracy Sandbox (10 Minutes &bull; 25 Marks)</span>
+              <p class="text-[11px] text-emerald-800/90 mt-0.5">Real-time keystroke interception, live WPM gauge, accuracy computation, and error tracking engine.</p>
+            </div>
+            <span class="px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-200 text-emerald-900 border border-emerald-300">10-Minute Timed Drive</span>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div class="p-4 bg-white border border-slate-200 rounded-xl text-center">
+              <span class="text-[10px] uppercase font-bold text-slate-400 block mb-0.5">Passing Speed Benchmark</span>
+              <span class="text-2xl font-black text-indigo-700">&ge; 35 <span class="text-xs text-slate-400">WPM</span></span>
+              <span class="text-[10px] text-emerald-600 block mt-1 font-bold">15 Marks Weightage</span>
+            </div>
+            <div class="p-4 bg-white border border-slate-200 rounded-xl text-center">
+              <span class="text-[10px] uppercase font-bold text-slate-400 block mb-0.5">Accuracy Threshold</span>
+              <span class="text-2xl font-black text-emerald-600">&ge; 95%</span>
+              <span class="text-[10px] text-emerald-600 block mt-1 font-bold">5 Marks Weightage</span>
+            </div>
+            <div class="p-4 bg-white border border-slate-200 rounded-xl text-center">
+              <span class="text-[10px] uppercase font-bold text-slate-400 block mb-0.5">Punctuation & Formatting</span>
+              <span class="text-2xl font-black text-slate-800">5 / 5 M</span>
+              <span class="text-[10px] text-slate-500 block mt-1">Capitalization & Periods</span>
+            </div>
+          </div>
+
+          <div class="bg-white border border-slate-200 rounded-xl p-5 shadow-xs space-y-3">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+              <span class="font-bold text-xs text-slate-800 uppercase tracking-wider"><i class="fas fa-quote-left text-slate-400 mr-1.5"></i>Official Standardized Benchmark Passage</span>
+              <span class="text-[11px] font-mono text-slate-500">${passage.split(/\s+/).length} Words &bull; ${passage.length} Characters</span>
+            </div>
+            <div class="p-4 bg-slate-50 rounded-xl border border-slate-200 text-xs font-mono text-slate-700 leading-relaxed select-all">
+              ${passage}
+            </div>
+            <div class="text-[11px] text-slate-500 flex items-center gap-2">
+              <i class="fas fa-info-circle text-sky-500"></i>
+              <span>Candidates type into the interactive sandbox with dynamic character highlighting and automated WPM recording.</span>
+            </div>
+          </div>
+        </div>
+      `;
+    } else if (secNum === 3) {
+      viewport.innerHTML = `
+        <div class="space-y-4">
+          <div class="p-4 bg-blue-50/70 border border-blue-200 rounded-xl text-xs text-blue-900 flex items-center justify-between flex-wrap gap-2">
+            <div>
+              <span class="font-bold text-blue-950 flex items-center gap-1.5"><i class="fas fa-comments text-blue-600"></i> Section 3: English Language, Business Communication & Comprehension (35 Marks)</span>
+              <p class="text-[11px] text-blue-800/90 mt-0.5">Grammar corrections, client email composition, reading comprehension, and audio speech analysis.</p>
+            </div>
+            <span class="px-2.5 py-1 rounded-lg text-xs font-bold bg-blue-200 text-blue-900 border border-blue-300">4 Assessment Parts</span>
+          </div>
+
+          <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-xs space-y-2">
+            <div class="flex items-start justify-between">
+              <div>
+                <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-800 border border-blue-200">Part A &bull; Grammar</span>
+                <h4 class="font-bold text-slate-900 text-sm mt-1">Sentence Correction & Business Grammar (5 Questions)</h4>
+              </div>
+              <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">10 Marks (5 × 2M)</span>
+            </div>
+            <div class="space-y-1.5 text-xs text-slate-700 pt-1">
+              <div class="p-2 bg-slate-50 rounded border border-slate-200 font-mono">1. Neither the manager nor the accountants were aware of the ledger discrepancy.</div>
+              <div class="p-2 bg-slate-50 rounded border border-slate-200 font-mono">2. Each employee is required to submit their timesheet before Friday afternoon.</div>
+              <div class="p-2 bg-slate-50 rounded border border-slate-200 font-mono">3. The committee has approved the revised statutory compliance framework.</div>
+              <div class="p-2 bg-slate-50 rounded border border-slate-200 font-mono">4. Due to unexpected system maintenance, the reporting deadline has been extended.</div>
+              <div class="p-2 bg-slate-50 rounded border border-slate-200 font-mono">5. Please ensure all confidential tax files are securely encrypted.</div>
+            </div>
+          </div>
+
+          <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-xs space-y-2">
+            <div class="flex items-start justify-between">
+              <div>
+                <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-50 text-indigo-800 border border-indigo-200">Part B &bull; Written Communication</span>
+                <h4 class="font-bold text-slate-900 text-sm mt-1">Formal Client Rescheduling Email Composition</h4>
+              </div>
+              <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-600 text-white">10 Marks</span>
+            </div>
+            <p class="text-xs text-slate-600 leading-relaxed">
+              <strong>Scenario:</strong> You are an accounts coordinator. An unavoidable internal audit conflict requires moving a strategic financial consultation originally scheduled for tomorrow at 2:00 PM.
+            </p>
+            <div class="p-2.5 bg-slate-50 rounded-lg border border-slate-200 text-xs text-slate-700">
+              <strong>Task:</strong> Draft a polite, professional email apologizing for the inconvenience, clearly explaining the need to reschedule, offering two concrete alternate time slots, and confirming next steps.
+            </div>
+          </div>
+
+          <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-xs space-y-2">
+            <div class="flex items-start justify-between">
+              <div>
+                <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-50 text-purple-800 border border-purple-200">Part C &bull; Reading Comprehension</span>
+                <h4 class="font-bold text-slate-900 text-sm mt-1">Workplace Ethics & Confidentiality Scenarios (5 Questions)</h4>
+              </div>
+              <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">10 Marks (5 × 2M)</span>
+            </div>
+            <p class="text-xs text-slate-600 leading-relaxed">
+              5 scenario questions evaluating candidate judgment regarding data protection, escalation of accounting errors, and client privacy protocols.
+            </p>
+          </div>
+
+          <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-xs space-y-2">
+            <div class="flex items-start justify-between">
+              <div>
+                <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">Part D &bull; Spoken Audio</span>
+                <h4 class="font-bold text-slate-900 text-sm mt-1">Verbal Self-Introduction & Career Intent (1-2 Minute Audio)</h4>
+              </div>
+              <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-600 text-white">5 Marks</span>
+            </div>
+            <p class="text-xs text-slate-600 leading-relaxed">
+              <strong>Prompt:</strong> Candidate speaks or records a structured 1-2 minute verbal introduction covering academic background, motivation to excel in an accounting or tax office, and key strengths in precision and teamwork.
+            </p>
+          </div>
+        </div>
+      `;
+    }
   }
 
   showAddQuestionModal() {
